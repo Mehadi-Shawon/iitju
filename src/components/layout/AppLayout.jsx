@@ -69,7 +69,8 @@ export default function AppLayout({ children }) {
         <div className="px-4 py-2 text-center">
           <p className="text-[8px] text-text-faint leading-relaxed">
             Design &amp; Dev by Md. Mehadi Hasan Shawon<br />
-            ID: 243027 · Batch: 33
+            ID: 243027 · Batch: 33<br />
+            write.shawon@gmail.com
           </p>
         </div>
 
