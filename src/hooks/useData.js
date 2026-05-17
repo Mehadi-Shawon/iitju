@@ -269,6 +269,20 @@ export function useAdminUsers() {
     return { error }
   }
 
+  async function updateUserName(userId, full_name) {
+    const { error } = await supabase.from('profiles').update({ full_name }).eq('id', userId)
+    if (!error) await fetchUsers()
+    return { error }
+  }
+
+  async function resetUserPassword(userId, newPassword) {
+    const { error } = await supabase.rpc('admin_reset_password', {
+      user_id: userId,
+      new_password: newPassword,
+    })
+    return { error }
+  }
+
   async function deleteUser(userId) {
     // Calls a SECURITY DEFINER function that deletes from auth.users.
     // Deleting auth.users cascades to profiles → staff_status → activity_log via FK.
@@ -286,7 +300,7 @@ export function useAdminUsers() {
     return { error }
   }
 
-  return { users, loading, refetch: fetchUsers, createStaffUser, createStudentUser, updateUserRole, updateHonorific, deleteUser, overrideStaffStatus }
+  return { users, loading, refetch: fetchUsers, createStaffUser, createStudentUser, updateUserRole, updateHonorific, updateUserName, resetUserPassword, deleteUser, overrideStaffStatus }
 }
 
 // ── Dashboard stats ──────────────────────────────────────────

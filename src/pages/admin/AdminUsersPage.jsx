@@ -8,7 +8,7 @@ const ROLE_TABS = ['all', 'staff', 'student', 'admin']
 const ROLE_LABELS = { all: 'All', staff: 'Faculty', student: 'Student', admin: 'Admin' }
 
 export default function AdminUsersPage() {
-  const { users, loading, createStaffUser, createStudentUser, deleteUser, overrideStaffStatus, updateUserRole, updateHonorific } = useAdminUsers()
+  const { users, loading, createStaffUser, createStudentUser, deleteUser, overrideStaffStatus, updateUserRole, updateHonorific, updateUserName, resetUserPassword } = useAdminUsers()
   const [roleTab, setRoleTab] = useState('all')
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(null) // 'staff' | 'student' | 'edit' | 'delete'
@@ -184,7 +184,7 @@ export default function AdminUsersPage() {
       {/* Modals */}
       <CreateStaffModal open={modalOpen === 'staff'} onClose={closeModal} onCreate={createStaffUser} />
       <CreateStudentModal open={modalOpen === 'student'} onClose={closeModal} onCreate={createStudentUser} />
-      {selected && <EditUserModal open={modalOpen === 'edit'} onClose={closeModal} user={selected} onOverride={overrideStaffStatus} onRoleChange={updateUserRole} onHonoricChange={updateHonorific} />}
+      {selected && <EditUserModal open={modalOpen === 'edit'} onClose={closeModal} user={selected} onOverride={overrideStaffStatus} onRoleChange={updateUserRole} onHonoricChange={updateHonorific} onNameChange={updateUserName} onPasswordReset={resetUserPassword} />}
       {selected && <DeleteUserModal open={modalOpen === 'delete'} onClose={closeModal} user={selected} onDelete={deleteUser} />}
     </div>
   )
@@ -329,18 +329,27 @@ function CreateStudentModal({ open, onClose, onCreate }) {
   )
 }
 
-function EditUserModal({ open, onClose, user, onOverride, onRoleChange, onHonoricChange }) {
+function EditUserModal({ open, onClose, user, onOverride, onRoleChange, onHonoricChange, onNameChange, onPasswordReset }) {
   const [status, setStatus] = useState(user.staff_status?.[0]?.status ?? 'offline')
   const [location, setLocation] = useState(user.staff_status?.[0]?.location ?? '')
   const [role, setRole] = useState(user.role)
   const [honorific, setHonorific] = useState(user.honorific ?? '')
+  const [fullName, setFullName] = useState(user.full_name ?? '')
+  const [newPassword, setNewPassword] = useState('')
   const [saving, setSaving] = useState(false)
 
   async function handleSave() {
+    if (!fullName.trim()) return toast.error('Name cannot be empty.')
+    if (newPassword && newPassword.length < 6) return toast.error('Password must be at least 6 characters.')
     setSaving(true)
+    if (fullName.trim() !== user.full_name) await onNameChange(user.id, fullName.trim())
     if (user.role !== role) await onRoleChange(user.id, role)
     if (user.honorific !== honorific) await onHonoricChange(user.id, honorific)
     if (user.role === 'staff') await onOverride(user.id, status, location)
+    if (newPassword) {
+      const { error } = await onPasswordReset(user.id, newPassword)
+      if (error) { setSaving(false); return toast.error('Password update failed: ' + error.message) }
+    }
     setSaving(false)
     toast.success('User updated')
     onClose()
@@ -349,6 +358,12 @@ function EditUserModal({ open, onClose, user, onOverride, onRoleChange, onHonori
   return (
     <Modal open={open} onClose={onClose} title={`Edit — ${user.full_name}`}>
       <div className="space-y-4">
+        {/* Name */}
+        <div>
+          <label className="form-label">Full Name</label>
+          <input className="form-input" value={fullName} onChange={e => setFullName(e.target.value)} />
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="form-label">Honorific / Title</label>
@@ -402,6 +417,18 @@ function EditUserModal({ open, onClose, user, onOverride, onRoleChange, onHonori
             </div>
           </>
         )}
+        {/* Password reset */}
+        <div>
+          <label className="form-label">New Password <span className="text-text-faint font-normal">(leave blank to keep current)</span></label>
+          <input
+            type="password"
+            className="form-input"
+            placeholder="Min 6 characters"
+            value={newPassword}
+            onChange={e => setNewPassword(e.target.value)}
+          />
+        </div>
+
         <button className="btn-primary w-full" onClick={handleSave} disabled={saving}>
           {saving ? <Spinner size={16} /> : 'Save Changes'}
         </button>
