@@ -417,17 +417,19 @@ function EditUserModal({ open, onClose, user, onOverride, onRoleChange, onHonori
             </div>
           </>
         )}
-        {/* Password reset */}
-        <div>
-          <label className="form-label">New Password <span className="text-text-faint font-normal">(leave blank to keep current)</span></label>
-          <input
-            type="password"
-            className="form-input"
-            placeholder="Min 6 characters"
-            value={newPassword}
-            onChange={e => setNewPassword(e.target.value)}
-          />
-        </div>
+        {/* Password reset — only for non-faculty users */}
+        {user.role !== 'staff' && (
+          <div>
+            <label className="form-label">New Password <span className="text-text-faint font-normal">(leave blank to keep current)</span></label>
+            <input
+              type="password"
+              className="form-input"
+              placeholder="Min 6 characters"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+            />
+          </div>
+        )}
 
         <button className="btn-primary w-full" onClick={handleSave} disabled={saving}>
           {saving ? <Spinner size={16} /> : 'Save Changes'}
