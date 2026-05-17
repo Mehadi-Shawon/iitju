@@ -58,6 +58,7 @@ export function useStaffList() {
       .channel(`staff-watcher-${Date.now()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_status' }, fetchStaff)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_log' }, fetchStaff)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, fetchStaff)
       .subscribe()
 
     return () => supabase.removeChannel(channel)
@@ -93,11 +94,12 @@ export function useMyStatus() {
       .eq('staff_id', profile.id)
 
     if (!error) {
-      await supabase.from('activity_log').insert({
+      const { error: logError } = await supabase.from('activity_log').insert({
         staff_id: profile.id,
         action: 'status_update',
         detail: `Status set to ${newStatus}${location ? ' · ' + location : ''}`,
       })
+      if (logError) console.error('activity_log insert failed:', logError)
       await fetchStatus()
     }
     return { error }

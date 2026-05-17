@@ -88,8 +88,10 @@ export default function StaffProfilePage() {
 
   async function handleHonorificSave() {
     setSavingHonorific(true)
-    await supabase.from('profiles').update({ honorific: honorific || null }).eq('id', profile.id)
+    const { error } = await supabase.from('profiles').update({ honorific: honorific || null }).eq('id', profile.id)
     setSavingHonorific(false)
+    if (error) return toast.error('Failed to save title.')
+    await refreshProfile()
     toast.success('Title updated!')
   }
 
