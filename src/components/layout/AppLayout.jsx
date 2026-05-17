@@ -12,6 +12,7 @@ const NAV = {
     { to: '/app/admin/qrscan', icon: 'qr_code_scanner', label: 'QR Scanner' },
     { to: '/app/admin/activity', icon: 'history', label: 'Activity Log' },
     { to: '/app/admin/settings', icon: 'settings', label: 'Settings' },
+    { to: '/app/staff/profile', icon: 'account_circle', label: 'My Profile' },
   ],
   staff: [
     { to: '/app/dashboard', icon: 'dashboard', label: 'Dashboard' },
@@ -114,7 +115,9 @@ export default function AppLayout({ children }) {
             }`}>
               {role === 'staff' ? 'FACULTY' : role?.toUpperCase()}
             </div>
-            <Avatar name={profile?.full_name} src={profile?.avatar_url} size="sm" className="cursor-pointer" />
+            <button onClick={() => navigate('/app/staff/profile')} className="focus:outline-none">
+              <Avatar name={profile?.full_name} src={profile?.avatar_url} size="sm" className="cursor-pointer" />
+            </button>
           </div>
         </header>
 
