@@ -102,7 +102,7 @@ export default function AppLayout({ children }) {
               role === 'staff' ? 'bg-green-100 text-green-700' :
               'bg-amber-100 text-amber-700'
             }`}>
-              {role?.toUpperCase()}
+              {role === 'staff' ? 'FACULTY' : role?.toUpperCase()}
             </div>
             <Avatar name={profile?.full_name} src={profile?.avatar_url} size="sm" className="cursor-pointer" />
           </div>
