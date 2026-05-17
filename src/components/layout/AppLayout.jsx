@@ -65,6 +65,14 @@ export default function AppLayout({ children }) {
           ))}
         </nav>
 
+        {/* Credit */}
+        <div className="px-4 py-2 text-center">
+          <p className="text-[8px] text-text-faint leading-relaxed">
+            Design &amp; Dev by Md. Mehadi Hasan Shawon<br />
+            ID: 243027 · Batch: 33
+          </p>
+        </div>
+
         {/* User */}
         <div className="p-3 border-t border-border-light space-y-1">
           <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] border border-border-light">
