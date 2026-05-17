@@ -29,6 +29,7 @@ export default function AppLayout({ children }) {
   const { profile, role, signOut } = useAuth()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [confirmSignOut, setConfirmSignOut] = useState(false)
 
   async function handleSignOut() {
     await signOut()
@@ -86,7 +87,7 @@ export default function AppLayout({ children }) {
             </div>
           </div>
           <button
-            onClick={handleSignOut}
+            onClick={() => setConfirmSignOut(true)}
             className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-[10px] text-sm text-text-faint hover:bg-red-50 hover:text-red-500 transition-colors duration-150"
           >
             <span className="material-symbols-outlined" style={{ fontSize: 18 }}>logout</span>
@@ -98,6 +99,33 @@ export default function AppLayout({ children }) {
       {/* Overlay (mobile) */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black/30 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      {/* Sign-out confirmation */}
+      {confirmSignOut && (
+        <div className="fixed inset-0 bg-text/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-xs p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-red-500" style={{ fontSize: 24 }}>logout</span>
+            </div>
+            <h3 className="text-base font-extrabold text-text mb-1">Sign Out?</h3>
+            <p className="text-sm text-text-muted mb-5">Are you sure you want to sign out of FacultyTrack?</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmSignOut(false)}
+                className="flex-1 btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { setConfirmSignOut(false); handleSignOut() }}
+                className="flex-1 btn-danger"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Main */}
