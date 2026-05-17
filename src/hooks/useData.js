@@ -133,60 +133,39 @@ export function useActivityLog(staffId, limit = 20) {
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
 
-  const fetchLogs = useCallback(async () => {
+  useEffect(() => {
     if (!staffId) return
-    try {
-      // Fetch logs without join first to avoid join failures silently clearing data
-      let query = supabase
-        .from('activity_log')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(limit)
+    let mounted = true
 
-      if (staffId !== 'all') query = query.eq('staff_id', staffId)
+    async function fetch() {
+      try {
+        let q = supabase
+          .from('activity_log')
+          .select('*, profiles(full_name, avatar_url)')
+          .order('created_at', { ascending: false })
+          .limit(limit)
+        if (staffId !== 'all') q = q.eq('staff_id', staffId)
 
-      const { data: logData, error: logError } = await query
-      if (logError || !logData) { setLoading(false); return }
-
-      // Fetch profiles separately for names
-      const staffIds = [...new Set(logData.map(l => l.staff_id).filter(Boolean))]
-      let profileMap = {}
-      if (staffIds.length) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('id, full_name, avatar_url')
-          .in('id', staffIds)
-        if (profileData) {
-          profileData.forEach(p => { profileMap[p.id] = p })
+        const { data } = await q
+        if (mounted && data) {
+          setLogs(data)
+          setLoading(false)
         }
+      } catch (_) {
+        if (mounted) setLoading(false)
       }
+    }
 
-      setLogs(logData.map(l => ({
-        ...l,
-        profiles: profileMap[l.staff_id] ?? null,
-      })))
-    } finally {
-      setLoading(false)
+    fetch()
+    const poll = setInterval(fetch, 5_000)
+
+    return () => {
+      mounted = false
+      clearInterval(poll)
     }
   }, [staffId, limit])
 
-  useEffect(() => {
-    fetchLogs()
-
-    const channel = supabase
-      .channel(`activity-log-${Date.now()}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_log' }, fetchLogs)
-      .subscribe()
-
-    const poll = setInterval(fetchLogs, 8_000)
-
-    return () => {
-      supabase.removeChannel(channel)
-      clearInterval(poll)
-    }
-  }, [fetchLogs])
-
-  return { logs, loading, refetch: fetchLogs }
+  return { logs, loading, refetch: () => setLoading(true) }
 }
 
 // ── Admin: user management ───────────────────────────────────
