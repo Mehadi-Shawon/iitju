@@ -264,9 +264,9 @@ export function useAdminUsers() {
   }
 
   async function deleteUser(userId) {
-    // Delete the profile row; FK cascades remove staff_status + activity_log.
-    // (auth.admin.deleteUser requires a service-role key — not available client-side)
-    const { error } = await supabase.from('profiles').delete().eq('id', userId)
+    // Calls a SECURITY DEFINER function that deletes from auth.users.
+    // Deleting auth.users cascades to profiles → staff_status → activity_log via FK.
+    const { error } = await supabase.rpc('delete_user_completely', { user_id: userId })
     if (!error) await fetchUsers()
     return { error }
   }
