@@ -9,6 +9,7 @@ const NAV = {
   admin: [
     { to: '/app/dashboard', icon: 'dashboard', label: 'Dashboard' },
     { to: '/app/admin/users', icon: 'group', label: 'Users' },
+    { to: '/app/admin/qrscan', icon: 'qr_code_scanner', label: 'QR Scanner' },
     { to: '/app/admin/activity', icon: 'history', label: 'Activity Log' },
     { to: '/app/admin/settings', icon: 'settings', label: 'Settings' },
   ],

@@ -8,6 +8,7 @@ import QRCheckInPage from '@/pages/staff/QRCheckInPage'
 import AdminUsersPage from '@/pages/admin/AdminUsersPage'
 import AdminActivityPage from '@/pages/admin/AdminActivityPage'
 import AdminSettingsPage from '@/pages/admin/AdminSettingsPage'
+import AdminQRScanPage from '@/pages/admin/AdminQRScanPage'
 
 export default function AppRouter() {
   return (
@@ -42,6 +43,12 @@ export default function AppRouter() {
       <Route path="/app/admin/users" element={
         <RequireAuth roles={['admin']}>
           <AppLayout><AdminUsersPage /></AppLayout>
+        </RequireAuth>
+      } />
+
+      <Route path="/app/admin/qrscan" element={
+        <RequireAuth roles={['admin']}>
+          <AppLayout><AdminQRScanPage /></AppLayout>
         </RequireAuth>
       } />
 
