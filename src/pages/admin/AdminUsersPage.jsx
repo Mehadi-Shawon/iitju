@@ -200,23 +200,53 @@ const HONORIFICS = ['Prof.', 'Assoc. Prof.', 'Asst. Prof.', 'Dr.', 'Lecturer', '
 
 function CreateStaffModal({ open, onClose, onCreate }) {
   const [form, setForm] = useState({ full_name: '', email: '', department: '', password: '', honorific: '' })
+  const [photo, setPhoto] = useState(null)
+  const [preview, setPreview] = useState(null)
   const [saving, setSaving] = useState(false)
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
+
+  function handlePhoto(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) return toast.error('Image must be under 5 MB')
+    setPhoto(file)
+    setPreview(URL.createObjectURL(file))
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
     setSaving(true)
-    const { error } = await onCreate(form)
+    const { error } = await onCreate({ ...form, photo })
     setSaving(false)
     if (error) return toast.error(error.message)
     toast.success(`Account created for ${form.honorific ? form.honorific + ' ' : ''}${form.full_name}`)
     setForm({ full_name: '', email: '', department: '', password: '', honorific: '' })
+    setPhoto(null)
+    setPreview(null)
     onClose()
   }
 
   return (
     <Modal open={open} onClose={onClose} title="Create Faculty Account">
       <form onSubmit={handleSubmit} className="space-y-4">
+
+        {/* Photo upload */}
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative group">
+            <div className="w-20 h-20 rounded-xl overflow-hidden bg-surface-low border-2 border-dashed border-border flex items-center justify-center">
+              {preview
+                ? <img src={preview} alt="preview" className="w-full h-full object-cover" />
+                : <span className="material-symbols-outlined text-text-faint" style={{ fontSize: 32 }}>person</span>
+              }
+            </div>
+          </div>
+          <label className="btn-secondary text-xs cursor-pointer">
+            <span className="material-symbols-outlined" style={{ fontSize: 15 }}>photo_camera</span>
+            {preview ? 'Change Photo' : 'Upload Photo'}
+            <input type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
+          </label>
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="form-label">Honorific / Title</label>

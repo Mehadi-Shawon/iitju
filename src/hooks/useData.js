@@ -213,13 +213,28 @@ export function useAdminUsers() {
     return () => supabase.removeChannel(channel)
   }, [fetchUsers])
 
-  async function createStaffUser({ full_name, email, department, password, honorific }) {
+  async function createStaffUser({ full_name, email, department, password, honorific, photo }) {
     const { data: authData, error: authError } = await anonClient.auth.signUp({
       email,
       password,
       options: { data: { full_name, role: 'staff', department, honorific } },
     })
     if (authError) return { error: authError }
+
+    // Upload profile photo if provided
+    const userId = authData?.user?.id
+    if (photo && userId) {
+      const ext = photo.name.split('.').pop()
+      const path = `${userId}.${ext}`
+      const { error: uploadErr } = await supabase.storage
+        .from('avatars')
+        .upload(path, photo, { upsert: true, contentType: photo.type })
+      if (!uploadErr) {
+        const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+        await supabase.from('profiles').update({ avatar_url: `${publicUrl}?t=${Date.now()}` }).eq('id', userId)
+      }
+    }
+
     await fetchUsers()
     return { data: authData, error: null }
   }
