@@ -9,13 +9,22 @@ const ACTION_META = {
 }
 
 export default function AdminActivityPage() {
-  const { logs, loading } = useActivityLog('all', 100)
+  const { logs, loading, refetch } = useActivityLog('all', 100)
 
   if (loading) return <LoadingPage />
 
   return (
     <div>
-      <PageHeader title="Activity Log" subtitle="All faculty check-ins and status updates, in real time" />
+      <PageHeader
+        title="Activity Log"
+        subtitle="All faculty check-ins and status updates, in real time"
+        action={
+          <button onClick={refetch} className="btn-secondary text-xs flex items-center gap-1.5">
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>refresh</span>
+            Refresh
+          </button>
+        }
+      />
 
       {logs.length === 0 ? (
         <EmptyState icon="history" title="No activity yet" description="Activity will appear here as faculty check in and update their status." />

@@ -135,17 +135,39 @@ export function useActivityLog(staffId, limit = 20) {
 
   const fetchLogs = useCallback(async () => {
     if (!staffId) return
-    let query = supabase
-      .from('activity_log')
-      .select('*, profiles(full_name, avatar_url)')
-      .order('created_at', { ascending: false })
-      .limit(limit)
+    try {
+      // Fetch logs without join first to avoid join failures silently clearing data
+      let query = supabase
+        .from('activity_log')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit)
 
-    if (staffId !== 'all') query = query.eq('staff_id', staffId)
+      if (staffId !== 'all') query = query.eq('staff_id', staffId)
 
-    const { data, error } = await query
-    if (!error) setLogs(data || [])
-    setLoading(false)
+      const { data: logData, error: logError } = await query
+      if (logError || !logData) { setLoading(false); return }
+
+      // Fetch profiles separately for names
+      const staffIds = [...new Set(logData.map(l => l.staff_id).filter(Boolean))]
+      let profileMap = {}
+      if (staffIds.length) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url')
+          .in('id', staffIds)
+        if (profileData) {
+          profileData.forEach(p => { profileMap[p.id] = p })
+        }
+      }
+
+      setLogs(logData.map(l => ({
+        ...l,
+        profiles: profileMap[l.staff_id] ?? null,
+      })))
+    } finally {
+      setLoading(false)
+    }
   }, [staffId, limit])
 
   useEffect(() => {
@@ -156,8 +178,7 @@ export function useActivityLog(staffId, limit = 20) {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_log' }, fetchLogs)
       .subscribe()
 
-    // Poll every 10 s as a reliable fallback when realtime misses events
-    const poll = setInterval(fetchLogs, 10_000)
+    const poll = setInterval(fetchLogs, 8_000)
 
     return () => {
       supabase.removeChannel(channel)
@@ -165,7 +186,7 @@ export function useActivityLog(staffId, limit = 20) {
     }
   }, [fetchLogs])
 
-  return { logs, loading }
+  return { logs, loading, refetch: fetchLogs }
 }
 
 // ── Admin: user management ───────────────────────────────────
