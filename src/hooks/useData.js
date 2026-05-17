@@ -156,7 +156,13 @@ export function useActivityLog(staffId, limit = 20) {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_log' }, fetchLogs)
       .subscribe()
 
-    return () => supabase.removeChannel(channel)
+    // Poll every 10 s as a reliable fallback when realtime misses events
+    const poll = setInterval(fetchLogs, 10_000)
+
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(poll)
+    }
   }, [fetchLogs])
 
   return { logs, loading }
