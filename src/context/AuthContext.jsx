@@ -32,11 +32,12 @@ export function AuthProvider({ children }) {
   async function fetchProfile(userId) {
     setProfileLoading(true)
     try {
+      // maybeSingle() returns null (not 400) when no row exists
       const { data } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single()
+        .maybeSingle()
       if (data) setProfile(data)
     } finally {
       setProfileLoading(false)
@@ -58,8 +59,9 @@ export function AuthProvider({ children }) {
     setSession(null)
   }
 
-  // True while checking session OR fetching profile for the first time
-  const loading = session === undefined || profileLoading
+  // Only block on profileLoading when we don't have a profile yet.
+  // Token refreshes re-run fetchProfile but shouldn't unmount pages.
+  const loading = session === undefined || (profileLoading && profile === null)
 
   const value = {
     session: session ?? null,
