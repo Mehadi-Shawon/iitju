@@ -5,12 +5,20 @@ import { StatusBadge, Avatar, StatCard, EmptyState, PageHeader, LoadingPage } fr
 import { formatDistanceToNow } from 'date-fns'
 
 const FILTERS = [
-  { id: 'all', label: 'All' },
-  { id: 'available', label: 'Available' },
-  { id: 'meeting', label: 'In Meeting' },
-  { id: 'away', label: 'Away' },
-  { id: 'offline', label: 'Offline' },
+  { id: 'all',        label: 'All' },
+  { id: 'available',  label: 'Available' },
+  { id: 'meeting',    label: 'In Meeting' },
+  { id: 'in-class',   label: 'In Class' },
+  { id: 'in-lab',     label: 'In Lab' },
+  { id: 'on-break',   label: 'On Break' },
+  { id: 'busy',       label: 'Busy' },
+  { id: 'away',       label: 'Away' },
+  { id: 'off-campus', label: 'Off Campus' },
+  { id: 'on-leave',   label: 'On Leave' },
+  { id: 'offline',    label: 'Offline' },
 ]
+
+const ABSENT_STATUSES = ['offline', 'off-campus', 'on-leave']
 
 export default function DashboardPage() {
   const { role } = useAuth()

@@ -10,10 +10,16 @@ import { supabase } from '@/lib/supabase'
 const HONORIFICS = ['Prof.', 'Assoc. Prof.', 'Asst. Prof.', 'Dr.', 'Lecturer', 'Director', 'Chairman', 'Mr.', 'Ms.', 'Mrs.']
 
 const STATUS_OPTIONS = [
-  { value: 'available', label: 'Available' },
-  { value: 'meeting',   label: 'In Meeting' },
-  { value: 'away',      label: 'Away' },
-  { value: 'offline',   label: 'Offline' },
+  { value: 'available',   label: 'Available' },
+  { value: 'meeting',     label: 'In Meeting' },
+  { value: 'in-class',    label: 'In Class' },
+  { value: 'in-lab',      label: 'In Lab' },
+  { value: 'on-break',    label: 'On Break' },
+  { value: 'busy',        label: 'Busy' },
+  { value: 'away',        label: 'Away' },
+  { value: 'off-campus',  label: 'Off Campus' },
+  { value: 'on-leave',    label: 'On Leave' },
+  { value: 'offline',     label: 'Offline' },
 ]
 
 const ACTION_ICONS = {

@@ -1,10 +1,16 @@
 // ── StatusBadge ──────────────────────────────────────────────
 export function StatusBadge({ status }) {
   const map = {
-    available: { label: 'Available', cls: 'badge-available' },
-    meeting:   { label: 'In Meeting', cls: 'badge-meeting' },
-    away:      { label: 'Away', cls: 'badge-away' },
-    offline:   { label: 'Offline', cls: 'badge-offline' },
+    available:    { label: 'Available',   cls: 'badge-available' },
+    meeting:      { label: 'In Meeting',  cls: 'badge-meeting' },
+    away:         { label: 'Away',        cls: 'badge-away' },
+    offline:      { label: 'Offline',     cls: 'badge-offline' },
+    'in-class':   { label: 'In Class',    cls: 'badge-in-class' },
+    'in-lab':     { label: 'In Lab',      cls: 'badge-in-lab' },
+    'on-break':   { label: 'On Break',    cls: 'badge-on-break' },
+    'off-campus': { label: 'Off Campus',  cls: 'badge-off-campus' },
+    busy:         { label: 'Busy',        cls: 'badge-busy' },
+    'on-leave':   { label: 'On Leave',    cls: 'badge-on-leave' },
   }
   const { label, cls } = map[status] ?? map.offline
   return (

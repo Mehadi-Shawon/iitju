@@ -346,8 +346,19 @@ function EditUserModal({ open, onClose, user, onOverride, onRoleChange, onHonori
               <label className="form-label">Override Status</label>
               <div className="relative">
                 <select className="form-select pr-8" value={status} onChange={e => setStatus(e.target.value)}>
-                  {['available','meeting','away','offline'].map(s => (
-                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                  {[
+                    { value: 'available',  label: 'Available' },
+                    { value: 'meeting',    label: 'In Meeting' },
+                    { value: 'in-class',   label: 'In Class' },
+                    { value: 'in-lab',     label: 'In Lab' },
+                    { value: 'on-break',   label: 'On Break' },
+                    { value: 'busy',       label: 'Busy' },
+                    { value: 'away',       label: 'Away' },
+                    { value: 'off-campus', label: 'Off Campus' },
+                    { value: 'on-leave',   label: 'On Leave' },
+                    { value: 'offline',    label: 'Offline' },
+                  ].map(s => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
                   ))}
                 </select>
                 <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-text-faint" style={{ fontSize: 16 }}>expand_more</span>

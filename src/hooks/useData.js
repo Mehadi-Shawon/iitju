@@ -265,15 +265,18 @@ export function useAdminUsers() {
 }
 
 // ── Dashboard stats ──────────────────────────────────────────
+const ABSENT_STATUSES = ['offline', 'off-campus', 'on-leave']
+
 export function useDashboardStats(staff = []) {
+  const onCampus = staff.filter(s => !ABSENT_STATUSES.includes(s.status))
   const stats = {
     total: staff.length,
     available: staff.filter(s => s.status === 'available').length,
     meeting: staff.filter(s => s.status === 'meeting').length,
     away: staff.filter(s => s.status === 'away').length,
     offline: staff.filter(s => s.status === 'offline').length,
-    onCampus: staff.filter(s => s.status !== 'offline').length,
-    onCampusPct: staff.length ? Math.round((staff.filter(s => s.status !== 'offline').length / staff.length) * 100) : 0,
+    onCampus: onCampus.length,
+    onCampusPct: staff.length ? Math.round((onCampus.length / staff.length) * 100) : 0,
   }
 
   return { stats }
