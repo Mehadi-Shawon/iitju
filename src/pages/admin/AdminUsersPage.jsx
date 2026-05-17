@@ -5,6 +5,7 @@ import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 
 const ROLE_TABS = ['all', 'staff', 'student', 'admin']
+const ROLE_LABELS = { all: 'All', staff: 'Faculty', student: 'Student', admin: 'Admin' }
 
 export default function AdminUsersPage() {
   const { users, loading, createStaffUser, createStudentUser, deleteUser, overrideStaffStatus, updateUserRole, updateHonorific } = useAdminUsers()
@@ -55,7 +56,7 @@ export default function AdminUsersPage() {
             <button key={r} onClick={() => setRoleTab(r)}
               className={`px-3 py-2 rounded-full text-xs font-bold border transition-all
                 ${roleTab === r ? 'bg-primary text-white border-primary' : 'bg-white text-text-muted border-border hover:border-primary hover:text-primary'}`}>
-              {r.charAt(0).toUpperCase() + r.slice(1)}
+              {ROLE_LABELS[r]}
             </button>
           ))}
         </div>
@@ -191,7 +192,8 @@ export default function AdminUsersPage() {
 
 function RoleBadge({ role }) {
   const styles = { admin: 'bg-primary-light text-primary', staff: 'bg-green-100 text-green-700', student: 'bg-amber-100 text-amber-700' }
-  return <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide ${styles[role] ?? ''}`}>{role}</span>
+  const labels = { admin: 'Admin', staff: 'Faculty', student: 'Student' }
+  return <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide ${styles[role] ?? ''}`}>{labels[role] ?? role}</span>
 }
 
 const HONORIFICS = ['Prof.', 'Assoc. Prof.', 'Asst. Prof.', 'Dr.', 'Lecturer', 'Director', 'Chairman', 'Mr.', 'Ms.', 'Mrs.']
