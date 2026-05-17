@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext'
 import { Avatar } from '@/components/ui'
 import toast from 'react-hot-toast'
 import iitLogo from '@/assets/IIT logo.png'
+import juLogo from '@/assets/Jahangirnagar_University_Logo.svg.png'
 
 const NAV = {
   admin: [
@@ -106,6 +107,10 @@ export default function AppLayout({ children }) {
           <button className="lg:hidden p-2 rounded-lg hover:bg-surface-low text-text-muted" onClick={() => setSidebarOpen(true)}>
             <span className="material-symbols-outlined">menu</span>
           </button>
+          {/* University logo centred in topbar */}
+          <div className="absolute left-1/2 -translate-x-1/2 h-10 flex items-center">
+            <img src={juLogo} alt="Jahangirnagar University" className="h-full w-auto object-contain" />
+          </div>
           <div className="hidden lg:block" />
           <div className="flex items-center gap-2 sm:gap-3">
             <div className={`text-[10px] sm:text-xs font-bold px-2 sm:px-2.5 py-1 rounded-full ${
