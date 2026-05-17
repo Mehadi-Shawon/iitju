@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react'
 import { useActivityLog } from '@/hooks/useData'
 import { PageHeader, LoadingPage, EmptyState } from '@/components/ui'
 import { formatDistanceToNow, format } from 'date-fns'
+import { supabase } from '@/lib/supabase'
 
 const ACTION_META = {
   qr_checkin:    { icon: 'qr_code_scanner', color: 'text-green-600 bg-green-50',     label: 'QR Check-In' },
@@ -10,6 +12,21 @@ const ACTION_META = {
 
 export default function AdminActivityPage() {
   const { logs, loading, refetch } = useActivityLog('all', 100)
+  const [profileNames, setProfileNames] = useState({})
+
+  // Fetch profile names separately whenever logs change
+  useEffect(() => {
+    const ids = [...new Set(logs.map(l => l.staff_id).filter(Boolean))]
+    if (!ids.length) return
+    supabase.from('profiles').select('id, full_name').in('id', ids)
+      .then(({ data }) => {
+        if (data) {
+          const map = {}
+          data.forEach(p => { map[p.id] = p.full_name })
+          setProfileNames(map)
+        }
+      })
+  }, [logs])
 
   return (
     <div>
@@ -43,7 +60,7 @@ export default function AdminActivityPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <span className="text-xs font-bold text-text">{label}</span>
-                        {log.profiles?.full_name && (
+                        {profileNames[log.staff_id] && (
                           <span className="text-xs text-text-muted ml-1.5">· {log.profiles.full_name}</span>
                         )}
                       </div>
@@ -88,7 +105,7 @@ export default function AdminActivityPage() {
                           </div>
                         </td>
                         <td className="px-5 py-3.5">
-                          <div className="text-sm font-semibold text-text">{log.profiles?.full_name ?? '—'}</div>
+                          <div className="text-sm font-semibold text-text">{profileNames[log.staff_id] ?? '—'}</div>
                         </td>
                         <td className="px-5 py-3.5 text-xs text-text-muted max-w-xs truncate">{log.detail}</td>
                         <td className="px-5 py-3.5">

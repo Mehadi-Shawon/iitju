@@ -138,22 +138,18 @@ export function useActivityLog(staffId, limit = 20) {
     let mounted = true
 
     async function fetch() {
-      try {
-        let q = supabase
-          .from('activity_log')
-          .select('*, profiles(full_name, avatar_url)')
-          .order('created_at', { ascending: false })
-          .limit(limit)
-        if (staffId !== 'all') q = q.eq('staff_id', staffId)
+      // No join — keeps query simple and avoids permission failures on profiles
+      let q = supabase
+        .from('activity_log')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit)
+      if (staffId !== 'all') q = q.eq('staff_id', staffId)
 
-        const { data } = await q
-        if (mounted && data) {
-          setLogs(data)
-          setLoading(false)
-        }
-      } catch (_) {
-        if (mounted) setLoading(false)
-      }
+      const { data } = await q
+      if (!mounted) return
+      if (data) setLogs(data)
+      setLoading(false)    // always clear loading regardless of result
     }
 
     fetch()
