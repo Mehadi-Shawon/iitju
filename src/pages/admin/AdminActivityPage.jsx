@@ -61,7 +61,7 @@ export default function AdminActivityPage() {
                       <div>
                         <span className="text-xs font-bold text-text">{label}</span>
                         {profileNames[log.staff_id] && (
-                          <span className="text-xs text-text-muted ml-1.5">· {log.profiles.full_name}</span>
+                          <span className="text-xs text-text-muted ml-1.5">· {profileNames[log.staff_id]}</span>
                         )}
                       </div>
                       <span className="text-[11px] text-text-faint font-mono shrink-0">
