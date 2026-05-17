@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useAdminUsers } from '@/hooks/useData'
+import { supabase } from '@/lib/supabase'
 import { StatusBadge, Avatar, PageHeader, Modal, LoadingPage, EmptyState, Spinner } from '@/components/ui'
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
@@ -336,12 +337,24 @@ function EditUserModal({ open, onClose, user, onOverride, onRoleChange, onHonori
   const [honorific, setHonorific] = useState(user.honorific ?? '')
   const [fullName, setFullName] = useState(user.full_name ?? '')
   const [newPassword, setNewPassword] = useState('')
+  const [photo, setPhoto] = useState(null)
+  const [preview, setPreview] = useState(null)
   const [saving, setSaving] = useState(false)
+  const fileRef = useRef(null)
+
+  function handlePhoto(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) return toast.error('Image must be under 5 MB')
+    setPhoto(file)
+    setPreview(URL.createObjectURL(file))
+  }
 
   async function handleSave() {
     if (!fullName.trim()) return toast.error('Name cannot be empty.')
     if (newPassword && newPassword.length < 6) return toast.error('Password must be at least 6 characters.')
     setSaving(true)
+
     if (fullName.trim() !== user.full_name) await onNameChange(user.id, fullName.trim())
     if (user.role !== role) await onRoleChange(user.id, role)
     if (user.honorific !== honorific) await onHonoricChange(user.id, honorific)
@@ -350,6 +363,19 @@ function EditUserModal({ open, onClose, user, onOverride, onRoleChange, onHonori
       const { error } = await onPasswordReset(user.id, newPassword)
       if (error) { setSaving(false); return toast.error('Password update failed: ' + error.message) }
     }
+
+    // Upload new photo if selected
+    if (photo) {
+      const ext = photo.name.split('.').pop()
+      const path = `${user.id}.${ext}`
+      const { error: uploadErr } = await supabase.storage
+        .from('avatars').upload(path, photo, { upsert: true, contentType: photo.type })
+      if (!uploadErr) {
+        const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+        await supabase.from('profiles').update({ avatar_url: `${publicUrl}?t=${Date.now()}` }).eq('id', user.id)
+      }
+    }
+
     setSaving(false)
     toast.success('User updated')
     onClose()
@@ -358,6 +384,22 @@ function EditUserModal({ open, onClose, user, onOverride, onRoleChange, onHonori
   return (
     <Modal open={open} onClose={onClose} title={`Edit — ${user.full_name}`}>
       <div className="space-y-4">
+
+        {/* Profile photo */}
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-xl overflow-hidden bg-surface-low border border-border-light shrink-0 flex items-center justify-center">
+            {preview || user.avatar_url
+              ? <img src={preview || user.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+              : <span className="material-symbols-outlined text-text-faint" style={{ fontSize: 28 }}>person</span>
+            }
+          </div>
+          <label className="btn-secondary text-xs cursor-pointer">
+            <span className="material-symbols-outlined" style={{ fontSize: 15 }}>photo_camera</span>
+            {preview ? 'Change Photo' : 'Upload Photo'}
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
+          </label>
+        </div>
+
         {/* Name */}
         <div>
           <label className="form-label">Full Name</label>
