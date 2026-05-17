@@ -165,7 +165,7 @@ export default function LoginPage() {
               © 2025 FacultyTrack · University Campus System
             </p>
             <p className="text-white/20 text-[10px]">
-              Design &amp; Developed by Md. Mehadi Hasan Shawon &nbsp;|&nbsp; ID: 243027 &nbsp;|&nbsp; Batch: 33
+              Design &amp; Developed by Md. Mehadi Hasan Shawon &nbsp;|&nbsp; ID: 243037 &nbsp;|&nbsp; Batch: 33
             </p>
             <p className="text-white/20 text-[10px]">write.shawon@gmail.com</p>
           </div>
