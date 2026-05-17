@@ -70,7 +70,7 @@ export default function AppLayout({ children }) {
             <Avatar name={profile?.full_name} src={profile?.avatar_url} size="sm" />
             <div className="min-w-0">
               <div className="text-xs font-bold text-text truncate">{profile?.full_name ?? 'User'}</div>
-              <div className="text-[10px] text-text-faint capitalize">{role}</div>
+              <div className="text-[10px] text-text-faint capitalize">{role === 'staff' ? 'Faculty' : role}</div>
             </div>
           </div>
           <button
