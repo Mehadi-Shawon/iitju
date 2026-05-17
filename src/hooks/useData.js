@@ -146,7 +146,9 @@ export function useActivityLog(staffId, limit = 20) {
       if (staffId !== 'all') query = query.eq('staff_id', staffId)
 
       const { data: logData, error: logError } = await query
-      if (logError || !logData) { setLoading(false); return }
+      if (logError) { console.error('❌ activity_log fetch error:', logError); setLoading(false); return }
+      if (!logData) { console.warn('⚠️ activity_log returned null'); setLoading(false); return }
+      console.log('✅ activity_log rows fetched:', logData.length)
 
       // Fetch profiles separately for names
       const staffIds = [...new Set(logData.map(l => l.staff_id).filter(Boolean))]

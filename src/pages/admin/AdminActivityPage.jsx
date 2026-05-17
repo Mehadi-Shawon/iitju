@@ -11,8 +11,6 @@ const ACTION_META = {
 export default function AdminActivityPage() {
   const { logs, loading, refetch } = useActivityLog('all', 100)
 
-  if (loading) return <LoadingPage />
-
   return (
     <div>
       <PageHeader
@@ -26,7 +24,9 @@ export default function AdminActivityPage() {
         }
       />
 
-      {logs.length === 0 ? (
+      {loading && logs.length === 0 ? (
+        <LoadingPage />
+      ) : logs.length === 0 ? (
         <EmptyState icon="history" title="No activity yet" description="Activity will appear here as faculty check in and update their status." />
       ) : (
         <>
