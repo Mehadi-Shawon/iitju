@@ -162,7 +162,7 @@ export default function LoginPage() {
           {/* Card footer */}
           <div className="px-8 py-4 border-t border-white/10 text-center space-y-1">
             <p className="text-white/25 text-[11px] font-medium tracking-widest uppercase">
-              © 2025 FacultyTrack · University Campus System
+              © 2026 FacultyTrack · Smart Campus Management
             </p>
             <p className="text-white/20 text-[10px]">
               Design &amp; Developed by Md. Mehadi Hasan Shawon &nbsp;|&nbsp; ID: 243037 &nbsp;|&nbsp; Batch: 33
