@@ -221,8 +221,14 @@ export function useAdminUsers() {
     })
     if (authError) return { error: authError }
 
-    // Upload profile photo if provided
     const userId = authData?.user?.id
+
+    // Explicitly save honorific — the trigger may not include it if schema wasn't updated
+    if (userId && honorific) {
+      await supabase.from('profiles').update({ honorific }).eq('id', userId)
+    }
+
+    // Upload profile photo if provided
     if (photo && userId) {
       const ext = photo.name.split('.').pop()
       const path = `${userId}.${ext}`
