@@ -41,6 +41,15 @@ export default function StaffProfilePage() {
   const [showQR, setShowQR] = useState(false)
   const fileInputRef = useRef(null)
 
+  const [nameForm, setNameForm] = useState({ full_name: '' })
+  const [savingName, setSavingName] = useState(false)
+  const [pwForm, setPwForm] = useState({ newPassword: '', confirm: '' })
+  const [savingPw, setSavingPw] = useState(false)
+
+  useEffect(() => {
+    if (profile) setNameForm({ full_name: profile.full_name ?? '' })
+  }, [profile?.full_name])
+
   useEffect(() => {
     if (status) setForm({ status: status.status, location: status.location ?? '', note: status.note ?? '' })
   }, [status])
@@ -84,6 +93,29 @@ export default function StaffProfilePage() {
       setUploadingAvatar(false)
       e.target.value = ''
     }
+  }
+
+  async function handleNameSave(e) {
+    e.preventDefault()
+    if (!nameForm.full_name.trim()) return toast.error('Name cannot be empty.')
+    setSavingName(true)
+    const { error } = await supabase.from('profiles').update({ full_name: nameForm.full_name.trim() }).eq('id', profile.id)
+    setSavingName(false)
+    if (error) return toast.error('Failed to update name.')
+    await refreshProfile()
+    toast.success('Name updated!')
+  }
+
+  async function handlePasswordSave(e) {
+    e.preventDefault()
+    if (pwForm.newPassword.length < 6) return toast.error('Password must be at least 6 characters.')
+    if (pwForm.newPassword !== pwForm.confirm) return toast.error('Passwords do not match.')
+    setSavingPw(true)
+    const { error } = await supabase.auth.updateUser({ password: pwForm.newPassword })
+    setSavingPw(false)
+    if (error) return toast.error(error.message)
+    setPwForm({ newPassword: '', confirm: '' })
+    toast.success('Password updated!')
   }
 
   async function handleHonorificSave() {
@@ -315,6 +347,51 @@ export default function StaffProfilePage() {
             ) : (
               <p className="text-sm text-text-faint">No check-in recorded</p>
             )}
+          </div>
+
+          {/* Account Settings */}
+          <div className="card p-4 sm:p-5">
+            <h3 className="text-xs font-bold text-text-faint uppercase tracking-widest mb-4">Account Settings</h3>
+
+            {/* Change Name */}
+            <form onSubmit={handleNameSave} className="mb-5 pb-5 border-b border-border-light space-y-3">
+              <label className="form-label">Full Name</label>
+              <input
+                className="form-input"
+                value={nameForm.full_name}
+                onChange={e => setNameForm({ full_name: e.target.value })}
+                placeholder="Your full name"
+              />
+              <button type="submit" className="btn-secondary text-xs w-full" disabled={savingName}>
+                {savingName ? <Spinner size={14} /> : 'Update Name'}
+              </button>
+            </form>
+
+            {/* Change Password */}
+            <form onSubmit={handlePasswordSave} className="space-y-3">
+              <label className="form-label">New Password</label>
+              <input
+                type="password"
+                className="form-input"
+                placeholder="Min 6 characters"
+                value={pwForm.newPassword}
+                onChange={e => setPwForm(f => ({ ...f, newPassword: e.target.value }))}
+              />
+              <input
+                type="password"
+                className="form-input"
+                placeholder="Confirm new password"
+                value={pwForm.confirm}
+                onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))}
+              />
+              <button type="submit" className="btn-secondary text-xs w-full" disabled={savingPw}>
+                {savingPw ? <Spinner size={14} /> : 'Change Password'}
+              </button>
+            </form>
+
+            <p className="text-[10px] text-text-faint mt-4 text-center">
+              To change your email, contact your system administrator.
+            </p>
           </div>
         </div>
       </div>
