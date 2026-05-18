@@ -34,27 +34,33 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#0f1535]">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, #0d0021 0%, #0a0f2e 40%, #0d0633 70%, #050118 100%)' }}
+    >
+      {/* Large vibrant blobs */}
+      <div className="absolute -top-32 -left-32 w-[600px] h-[600px] rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(120,40,255,0.55) 0%, transparent 70%)', filter: 'blur(60px)' }} />
+      <div className="absolute -bottom-32 -right-32 w-[600px] h-[600px] rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.45) 0%, transparent 70%)', filter: 'blur(60px)' }} />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(167,80,255,0.3) 0%, transparent 70%)', filter: 'blur(80px)' }} />
+      <div className="absolute top-10 right-10 w-72 h-72 rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.35) 0%, transparent 70%)', filter: 'blur(50px)' }} />
 
-      {/* Background decorative blobs */}
-      <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-primary/30 blur-[120px] pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full bg-purple-600/20 blur-[120px] pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-primary/10 blur-[160px] pointer-events-none" />
-
-      {/* Subtle grid overlay */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.04]"
+      {/* Subtle grid */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.06]"
         style={{
-          backgroundImage: 'linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
+          backgroundImage: 'linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px)',
+          backgroundSize: '44px 44px',
         }}
       />
 
       {/* Card */}
       <div className="relative z-10 w-full max-w-md mx-4">
-        <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-2xl overflow-hidden"
+        <div className="bg-white/[0.08] backdrop-blur-3xl rounded-2xl overflow-hidden"
           style={{
-            boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15)',
+            border: '1px solid rgba(255,255,255,0.18)',
+            boxShadow: '0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(120,40,255,0.15), inset 0 1px 0 rgba(255,255,255,0.18)',
           }}
         >
 
