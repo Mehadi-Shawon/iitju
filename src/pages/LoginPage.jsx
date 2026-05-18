@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext'
 import { Spinner } from '@/components/ui'
 import toast from 'react-hot-toast'
 import iitLogo from '@/assets/IIT logo.png'
-import juBg from '@/assets/JU BG.jpg'
+import juBg from '@/assets/JU NEW BG.png'
 
 export default function LoginPage() {
   const { signIn, signInWithStudentId } = useAuth()
