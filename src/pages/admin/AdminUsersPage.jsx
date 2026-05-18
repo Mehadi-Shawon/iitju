@@ -421,7 +421,7 @@ function EditUserModal({ open, onClose, user, onOverride, onRoleChange, onHonori
             <label className="form-label">Role</label>
             <div className="relative">
               <select className="form-select pr-8" value={role} onChange={e => setRole(e.target.value)}>
-                <option value="staff">Faculty / Staff</option>
+                <option value="staff">Faculty</option>
                 <option value="student">Student</option>
                 <option value="admin">Admin</option>
               </select>

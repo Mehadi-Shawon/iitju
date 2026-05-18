@@ -86,7 +86,7 @@ export default function AdminActivityPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border-light">
-                    {['Event', 'Staff Member', 'Detail', 'Time'].map(h => (
+                    {['Event', 'Faculty Member', 'Detail', 'Time'].map(h => (
                       <th key={h} className="text-left px-5 py-3 text-[10px] font-bold text-text-faint uppercase tracking-widest whitespace-nowrap">{h}</th>
                     ))}
                   </tr>

@@ -22,7 +22,7 @@ export default function AdminQRScanPage() {
             setScanResult(data)
             await scanner.stop()
             setScanning(false)
-            toast.success(`Scanned: ${data.name ?? data.staffId}`)
+            toast.success(`Scanned: ${data.name ?? data.staffId ?? 'Unknown'}`)
           } catch {
             toast.error('Invalid QR code')
           }

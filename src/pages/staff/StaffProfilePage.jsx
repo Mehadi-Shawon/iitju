@@ -206,7 +206,7 @@ export default function StaffProfilePage() {
             <div>
               <div className="font-bold text-sm text-text mb-1">Your Check-In QR Code</div>
               <p className="text-xs text-text-faint leading-relaxed max-w-xs">
-                Show this at any campus QR terminal to instantly update your location and check in. The code is linked to your staff ID.
+                Show this at any campus QR terminal to instantly update your location and check in. The code is linked to your faculty ID.
               </p>
               <div className="mt-3 text-xs font-mono text-text-faint bg-surface-low rounded-lg px-3 py-2">
                 ID: {profile?.id?.slice(0, 16)}…
