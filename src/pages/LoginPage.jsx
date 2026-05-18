@@ -52,10 +52,14 @@ export default function LoginPage() {
 
       {/* Card */}
       <div className="relative z-10 w-full max-w-md mx-4">
-        <div className="bg-white/[0.06] backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-2xl overflow-hidden"
+          style={{
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15)',
+          }}
+        >
 
           {/* Card header — logo + branding */}
-          <div className="flex flex-col items-center pt-8 pb-7 border-b border-white/10">
+          <div className="flex flex-col items-center pt-8 pb-7 border-b border-white/15 bg-white/[0.04]">
             <img src={iitLogo} alt="IIT Logo" className="w-full object-contain max-h-20 px-6" />
             <div className="mt-5 text-center">
               <h1 className="text-white text-xl font-extrabold tracking-tight">FacultyTrack</h1>
@@ -69,7 +73,7 @@ export default function LoginPage() {
           <div className="px-8 py-7">
 
             {/* Tab switcher */}
-            <div className="flex bg-white/10 rounded-xl p-1 gap-1 mb-6">
+            <div className="flex bg-white/[0.08] rounded-xl p-1 gap-1 mb-6 border border-white/10">
               {[{ id: 'staff', label: 'Faculty / Admin' }, { id: 'student', label: 'Student' }].map(t => (
                 <button
                   key={t.id}
@@ -95,7 +99,7 @@ export default function LoginPage() {
                     type="email" required
                     placeholder="you@university.edu"
                     value={email} onChange={e => setEmail(e.target.value)}
-                    className="w-full h-11 rounded-xl bg-white/10 border border-white/15 px-4 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-primary focus:bg-white/15 focus:ring-2 focus:ring-primary/30"
+                    className="w-full h-11 rounded-xl bg-white/[0.08] border border-white/20 px-4 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-primary/70 focus:bg-white/15 focus:ring-2 focus:ring-primary/20 backdrop-blur-sm"
                   />
                 </div>
                 <div>
@@ -107,7 +111,7 @@ export default function LoginPage() {
                     type="password" required
                     placeholder="••••••••"
                     value={password} onChange={e => setPassword(e.target.value)}
-                    className="w-full h-11 rounded-xl bg-white/10 border border-white/15 px-4 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-primary focus:bg-white/15 focus:ring-2 focus:ring-primary/30"
+                    className="w-full h-11 rounded-xl bg-white/[0.08] border border-white/20 px-4 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-primary/70 focus:bg-white/15 focus:ring-2 focus:ring-primary/20 backdrop-blur-sm"
                   />
                 </div>
                 <button
@@ -135,7 +139,7 @@ export default function LoginPage() {
                     type="text" required
                     placeholder="e.g. STU-2024-0042"
                     value={studentId} onChange={e => setStudentId(e.target.value)}
-                    className="w-full h-11 rounded-xl bg-white/10 border border-white/15 px-4 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-primary focus:bg-white/15 focus:ring-2 focus:ring-primary/30"
+                    className="w-full h-11 rounded-xl bg-white/[0.08] border border-white/20 px-4 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-primary/70 focus:bg-white/15 focus:ring-2 focus:ring-primary/20 backdrop-blur-sm"
                   />
                 </div>
                 <div className="flex items-start gap-2.5 bg-amber-400/10 border border-amber-400/20 rounded-xl px-3.5 py-3">
@@ -160,7 +164,7 @@ export default function LoginPage() {
           </div>
 
           {/* Card footer */}
-          <div className="px-8 py-4 border-t border-white/10 text-center space-y-1">
+          <div className="px-8 py-4 border-t border-white/15 bg-white/[0.04] text-center space-y-1">
             <p className="text-white/25 text-[11px] font-medium tracking-widest uppercase">
               © 2026 FacultyTrack · Smart Campus Management
             </p>
