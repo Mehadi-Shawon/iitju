@@ -62,7 +62,10 @@ export default function LoginPage() {
 
           {/* Card header — logo + branding */}
           <div className="flex flex-col items-center pt-8 pb-7 border-b border-white/10">
-            <img src={iitLogo} alt="IIT Logo" className="w-full object-contain max-h-20 px-6" />
+            <div className="relative w-full px-6 py-3">
+              <div className="absolute inset-0 rounded-full blur-2xl opacity-100" style={{ background: 'radial-gradient(ellipse at center, rgba(255,255,255,1) 0%, rgba(255,255,255,0.65) 60%, transparent 100%)' }} />
+              <img src={iitLogo} alt="IIT Logo" className="relative w-full object-contain max-h-20" />
+            </div>
             <div className="mt-5 text-center">
               <h1 className="text-white text-xl font-extrabold tracking-tight">FacultyTrack</h1>
               <p className="text-white/70 text-xs font-medium mt-0.5 uppercase tracking-widest">
