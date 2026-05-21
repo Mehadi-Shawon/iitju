@@ -303,6 +303,164 @@ export function useAdminUsers() {
   return { users, loading, refetch: fetchUsers, createStaffUser, createStudentUser, updateUserRole, updateHonorific, updateUserName, resetUserPassword, deleteUser, overrideStaffStatus }
 }
 
+// ── Schedule requests (student ↔ faculty) ───────────────────
+export function useScheduleRequests() {
+  const { profile } = useAuth()
+  const [requests, setRequests] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchRequests = useCallback(async () => {
+    if (!profile?.id) return
+
+    const { data, error } = await supabase
+      .from('schedule_requests')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error || !data) { setLoading(false); return }
+
+    const ids = [...new Set([...data.map(r => r.student_id), ...data.map(r => r.staff_id)])]
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, honorific, department, avatar_url, student_id')
+      .in('id', ids)
+
+    const pm = {}
+    for (const p of profiles ?? []) pm[p.id] = p
+
+    setRequests(data.map(r => ({ ...r, student: pm[r.student_id] ?? null, staff: pm[r.staff_id] ?? null })))
+    setLoading(false)
+  }, [profile?.id])
+
+  useEffect(() => {
+    fetchRequests()
+    const channel = supabase
+      .channel(`schedule-reqs-${Date.now()}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_requests' }, fetchRequests)
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [fetchRequests])
+
+  async function submitRequest({ staff_id, subject, message, preferred_date, preferred_time, duration_mins }) {
+    const { data: inserted, error } = await supabase.from('schedule_requests').insert({
+      student_id: profile.id,
+      staff_id,
+      subject,
+      message: message || '',
+      preferred_date,
+      preferred_time,
+      duration_mins: duration_mins || 30,
+    }).select().single()
+
+    if (!error && inserted) {
+      await supabase.from('notifications').insert({
+        user_id: staff_id,
+        type: 'schedule_request',
+        title: 'New Schedule Request',
+        body: `${profile.full_name} requested a meeting: "${subject}"`,
+        request_id: inserted.id,
+      })
+      await fetchRequests()
+    }
+    return { error }
+  }
+
+  async function respondToRequest(requestId, status, staff_note = '') {
+    const req = requests.find(r => r.id === requestId)
+    const { error } = await supabase
+      .from('schedule_requests')
+      .update({ status, staff_note, updated_at: new Date().toISOString() })
+      .eq('id', requestId)
+
+    if (!error && req) {
+      const facultyName = profile.honorific
+        ? `${profile.honorific} ${profile.full_name}`
+        : profile.full_name
+      await supabase.from('notifications').insert({
+        user_id: req.student_id,
+        type: `schedule_${status}`,
+        title: status === 'accepted' ? 'Request Accepted' : 'Request Declined',
+        body: `${facultyName} ${status} your meeting request: "${req.subject}"`,
+        request_id: requestId,
+      })
+      await fetchRequests()
+    }
+    return { error }
+  }
+
+  async function cancelRequest(requestId) {
+    const req = requests.find(r => r.id === requestId)
+    const { error } = await supabase
+      .from('schedule_requests')
+      .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+      .eq('id', requestId)
+
+    if (!error && req) {
+      await supabase.from('notifications').insert({
+        user_id: req.staff_id,
+        type: 'schedule_cancelled',
+        title: 'Meeting Request Cancelled',
+        body: `${profile.full_name} cancelled their request: "${req.subject}"`,
+        request_id: requestId,
+      })
+      await fetchRequests()
+    }
+    return { error }
+  }
+
+  return { requests, loading, submitRequest, respondToRequest, cancelRequest, refetch: fetchRequests }
+}
+
+// ── Notifications ────────────────────────────────────────────
+export function useNotifications() {
+  const { profile } = useAuth()
+  const [notifications, setNotifications] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchNotifications = useCallback(async () => {
+    if (!profile?.id) return
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', profile.id)
+      .order('created_at', { ascending: false })
+      .limit(30)
+    if (data) setNotifications(data)
+    setLoading(false)
+  }, [profile?.id])
+
+  useEffect(() => {
+    fetchNotifications()
+    if (!profile?.id) return
+    const channel = supabase
+      .channel(`notifs-${profile.id}-${Date.now()}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${profile.id}`,
+      }, fetchNotifications)
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [fetchNotifications, profile?.id])
+
+  const unreadCount = notifications.filter(n => !n.read).length
+
+  async function markAsRead(id) {
+    await supabase.from('notifications').update({ read: true }).eq('id', id)
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
+  }
+
+  async function markAllRead() {
+    const ids = notifications.filter(n => !n.read).map(n => n.id)
+    if (!ids.length) return
+    await supabase.from('notifications').update({ read: true }).in('id', ids)
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+  }
+
+  return { notifications, loading, unreadCount, markAsRead, markAllRead }
+}
+
 // ── Dashboard stats ──────────────────────────────────────────
 const ABSENT_STATUSES = ['offline', 'off-campus', 'on-leave']
 

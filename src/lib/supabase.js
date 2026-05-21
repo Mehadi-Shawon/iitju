@@ -91,9 +91,79 @@ export const anonClient = createClient(
   CREATE POLICY "log_select" ON public.activity_log FOR SELECT TO authenticated USING (true);
   CREATE POLICY "log_insert" ON public.activity_log FOR INSERT TO authenticated WITH CHECK (true);
 
+  -- 4b. notifications table
+  CREATE TABLE public.notifications (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    type        TEXT NOT NULL,
+    title       TEXT NOT NULL,
+    body        TEXT NOT NULL,
+    request_id  UUID REFERENCES public.schedule_requests(id) ON DELETE CASCADE,
+    read        BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+  -- Each user reads only their own notifications
+  CREATE POLICY "notif_select" ON public.notifications FOR SELECT TO authenticated
+    USING (user_id = auth.uid());
+
+  -- Any authenticated user can create a notification (students → faculty, faculty → students)
+  CREATE POLICY "notif_insert" ON public.notifications FOR INSERT TO authenticated
+    WITH CHECK (true);
+
+  -- Users can mark their own notifications as read
+  CREATE POLICY "notif_update" ON public.notifications FOR UPDATE TO authenticated
+    USING (user_id = auth.uid());
+
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+
+  -- 4c. schedule_requests table
+  CREATE TABLE public.schedule_requests (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id      UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    staff_id        UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    subject         TEXT NOT NULL,
+    message         TEXT DEFAULT '',
+    preferred_date  DATE NOT NULL,
+    preferred_time  TIME NOT NULL,
+    duration_mins   INT DEFAULT 30,
+    status          TEXT NOT NULL CHECK (status IN ('pending','accepted','declined','cancelled')) DEFAULT 'pending',
+    staff_note      TEXT DEFAULT '',
+    created_at      TIMESTAMPTZ DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  ALTER TABLE public.schedule_requests ENABLE ROW LEVEL SECURITY;
+
+  -- Students see own requests; staff see incoming; admins see all
+  CREATE POLICY "requests_select" ON public.schedule_requests FOR SELECT TO authenticated
+    USING (
+      student_id = auth.uid()
+      OR staff_id = auth.uid()
+      OR (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
+    );
+
+  -- Only students can create requests (must be their own student_id)
+  CREATE POLICY "requests_insert" ON public.schedule_requests FOR INSERT TO authenticated
+    WITH CHECK (
+      student_id = auth.uid()
+      AND (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'student'
+    );
+
+  -- Students can cancel own pending; staff can respond; admins can do anything
+  CREATE POLICY "requests_update" ON public.schedule_requests FOR UPDATE TO authenticated
+    USING (
+      student_id = auth.uid()
+      OR staff_id = auth.uid()
+      OR (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
+    );
+
   -- 5. Enable Realtime on staff_status
   ALTER PUBLICATION supabase_realtime ADD TABLE public.staff_status;
   ALTER PUBLICATION supabase_realtime ADD TABLE public.activity_log;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.schedule_requests;
 
   -- 6. Function to auto-create profile + status on signup
   CREATE OR REPLACE FUNCTION public.handle_new_user()

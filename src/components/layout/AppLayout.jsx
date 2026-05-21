@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { Avatar } from '@/components/ui'
+import { useNotifications } from '@/hooks/useData'
+import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import iitLogo from '@/assets/IIT logo.png'
 import juLogo from '@/assets/Jahangirnagar_University_Logo.svg.png'
@@ -19,9 +21,11 @@ const NAV = {
     { to: '/app/dashboard', icon: 'dashboard', label: 'Dashboard' },
     { to: '/app/staff/profile', icon: 'account_circle', label: 'My Profile' },
     { to: '/app/staff/checkin', icon: 'qr_code_scanner', label: 'QR Check-In' },
+    { to: '/app/staff/schedule', icon: 'calendar_month', label: 'Schedule Requests', badgeKey: 'staffSchedule' },
   ],
   student: [
     { to: '/app/dashboard', icon: 'dashboard', label: 'Faculty Directory' },
+    { to: '/app/student/schedule', icon: 'calendar_add_on', label: 'Request Schedule', badgeKey: 'studentSchedule' },
   ],
 }
 
@@ -30,6 +34,19 @@ export default function AppLayout({ children }) {
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [confirmSignOut, setConfirmSignOut] = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
+  const { notifications, unreadCount, markAsRead, markAllRead } = useNotifications()
+  const bellRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (bellRef.current && !bellRef.current.contains(e.target)) {
+        setNotifOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   async function handleSignOut() {
     await signOut()
@@ -38,6 +55,13 @@ export default function AppLayout({ children }) {
   }
 
   const navItems = NAV[role] ?? NAV.student
+
+  const badges = {
+    staffSchedule: notifications.filter(n => n.type === 'schedule_request' && !n.read).length,
+    studentSchedule: notifications.filter(n => (n.type === 'schedule_accepted' || n.type === 'schedule_declined') && !n.read).length,
+  }
+
+  const schedulePage = role === 'student' ? '/app/student/schedule' : '/app/staff/schedule'
 
   return (
     <div className="flex min-h-screen">
@@ -53,19 +77,27 @@ export default function AppLayout({ children }) {
         {/* Nav */}
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
           <div className="text-[9px] font-bold text-text-faint uppercase tracking-widest px-3 py-2">Menu</div>
-          {navItems.map(item => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              onClick={() => setSidebarOpen(false)}
-              className={({ isActive }) =>
-                `flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] text-sm font-medium transition-colors duration-150
-                ${isActive ? 'bg-primary-light text-primary font-bold' : 'text-text-muted hover:bg-surface-low hover:text-text'}`}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{item.icon}</span>
-              {item.label}
-            </NavLink>
-          ))}
+          {navItems.map(item => {
+            const badge = item.badgeKey ? badges[item.badgeKey] : 0
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={() => setSidebarOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] text-sm font-medium transition-colors duration-150
+                  ${isActive ? 'bg-primary-light text-primary font-bold' : 'text-text-muted hover:bg-surface-low hover:text-text'}`}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{item.icon}</span>
+                <span className="flex-1">{item.label}</span>
+                {badge > 0 && (
+                  <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shrink-0">
+                    {badge > 9 ? '9+' : badge}
+                  </span>
+                )}
+              </NavLink>
+            )
+          })}
         </nav>
 
         {/* Credit */}
@@ -148,6 +180,56 @@ export default function AppLayout({ children }) {
             }`}>
               {role === 'staff' ? 'FACULTY' : role?.toUpperCase()}
             </div>
+
+            {/* Notification bell */}
+            <div className="relative" ref={bellRef}>
+              <button
+                onClick={() => setNotifOpen(o => !o)}
+                className="relative p-1.5 rounded-lg hover:bg-surface-low text-text-muted transition-colors"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 22 }}>notifications</span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {notifOpen && (
+                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-border-light overflow-hidden z-50">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border-light">
+                    <span className="font-bold text-sm text-text">Notifications</span>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={markAllRead}
+                        className="text-xs text-primary font-semibold hover:underline"
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-96 overflow-y-auto divide-y divide-border-light">
+                    {notifications.length === 0 ? (
+                      <div className="py-10 text-center text-sm text-text-faint">
+                        <span className="material-symbols-outlined block text-3xl mb-2">notifications_off</span>
+                        No notifications yet
+                      </div>
+                    ) : notifications.map(n => (
+                      <NotifItem
+                        key={n.id}
+                        notif={n}
+                        onNavigate={() => {
+                          markAsRead(n.id)
+                          setNotifOpen(false)
+                          navigate(schedulePage)
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button onClick={() => navigate('/app/staff/profile')} className="focus:outline-none">
               <Avatar name={profile?.full_name} src={profile?.avatar_url} size="sm" className="cursor-pointer" />
             </button>
@@ -158,6 +240,37 @@ export default function AppLayout({ children }) {
         <main className="flex-1 p-3 sm:p-6 max-w-6xl w-full mx-auto">
           {children}
         </main>
+      </div>
+    </div>
+  )
+}
+
+const NOTIF_ICON = {
+  schedule_request:   { icon: 'calendar_add_on',  cls: 'text-primary bg-primary-light' },
+  schedule_accepted:  { icon: 'event_available',   cls: 'text-green-600 bg-green-50' },
+  schedule_declined:  { icon: 'event_busy',        cls: 'text-red-500 bg-red-50' },
+  schedule_cancelled: { icon: 'event_busy',        cls: 'text-gray-500 bg-gray-100' },
+}
+
+function NotifItem({ notif, onNavigate }) {
+  const { icon, cls } = NOTIF_ICON[notif.type] ?? NOTIF_ICON.schedule_request
+  return (
+    <div
+      onClick={onNavigate}
+      className={`flex gap-3 px-4 py-3 cursor-pointer hover:bg-surface-low transition-colors ${!notif.read ? 'bg-blue-50/50' : ''}`}
+    >
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${cls}`}>
+        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{icon}</span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <span className="text-xs font-bold text-text leading-tight">{notif.title}</span>
+          {!notif.read && <span className="w-2 h-2 rounded-full bg-primary shrink-0 mt-0.5" />}
+        </div>
+        <div className="text-xs text-text-muted mt-0.5 leading-snug">{notif.body}</div>
+        <div className="text-[10px] text-text-faint mt-1">
+          {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
+        </div>
       </div>
     </div>
   )
