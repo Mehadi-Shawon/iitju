@@ -86,145 +86,111 @@ export default function ScheduleRequestPage() {
       </div>
 
       {tab === 'new' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-          {/* Faculty picker */}
-          <div className="lg:col-span-2 space-y-3">
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-faint" style={{ fontSize: 17 }}>search</span>
-              <input
-                type="text"
-                className="form-input pl-9"
-                placeholder="Search faculty..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+            {/* Faculty picker — full width on mobile, 2 cols on desktop */}
+            <div className="lg:col-span-2 space-y-3">
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-faint" style={{ fontSize: 17 }}>search</span>
+                <input
+                  type="text"
+                  className="form-input pl-9"
+                  placeholder="Search faculty..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2 max-h-[65vh] overflow-y-auto pr-1">
+                {filtered.length === 0 ? (
+                  <EmptyState icon="search_off" title="No faculty found" description="Try a different search term." />
+                ) : filtered.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => setSelected(prev => prev?.id === s.id ? null : s)}
+                    className={`w-full text-left card px-3.5 py-3 flex items-center gap-3 transition-all duration-150
+                      ${selected?.id === s.id
+                        ? 'border-primary bg-primary-light shadow'
+                        : 'hover:border-primary/40 hover:shadow-sm'}`}
+                  >
+                    <div className="relative shrink-0">
+                      <Avatar name={s.full_name} src={s.avatar_url} size="sm" />
+                      <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white status-dot status-dot-${s.status}`} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-bold text-text truncate">
+                        {s.honorific ? `${s.honorific} ${s.full_name}` : s.full_name}
+                      </div>
+                      <div className="text-xs text-text-faint truncate">{s.department ?? '—'}</div>
+                      <div className="mt-1"><StatusBadge status={s.status} /></div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Desktop right panel — hidden on mobile */}
+            <div className="hidden lg:block lg:col-span-3">
+              {selected ? (
+                <div className="card p-5 sm:p-6">
+                  <SelectedFacultyHeader faculty={selected} />
+                  <RequestForm
+                    form={form} setForm={setForm}
+                    submitting={submitting}
+                    onSubmit={handleSubmit}
+                    onClear={() => setSelected(null)}
+                  />
+                </div>
+              ) : (
+                <div className="card p-8 flex flex-col items-center justify-center text-center gap-3 min-h-[300px]">
+                  <div className="w-14 h-14 rounded-full bg-primary-light flex items-center justify-center">
+                    <span className="material-symbols-outlined text-primary" style={{ fontSize: 28 }}>calendar_add_on</span>
+                  </div>
+                  <div>
+                    <div className="font-bold text-text mb-1">Select a Faculty Member</div>
+                    <div className="text-sm text-text-muted">Choose from the list on the left to send a schedule request</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Mobile bottom-sheet modal — shown only on mobile when a faculty is selected */}
+          {selected && (
+            <div className="fixed inset-0 z-50 flex items-end lg:hidden">
+              {/* Backdrop */}
+              <div
+                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                onClick={() => setSelected(null)}
               />
-            </div>
-            <div className="space-y-2 max-h-[65vh] overflow-y-auto pr-1">
-              {filtered.length === 0 ? (
-                <EmptyState icon="search_off" title="No faculty found" description="Try a different search term." />
-              ) : filtered.map(s => (
-                <button
-                  key={s.id}
-                  onClick={() => setSelected(prev => prev?.id === s.id ? null : s)}
-                  className={`w-full text-left card px-3.5 py-3 flex items-center gap-3 transition-all duration-150
-                    ${selected?.id === s.id
-                      ? 'border-primary bg-primary-light shadow'
-                      : 'hover:border-primary/40 hover:shadow-sm'}`}
-                >
-                  <div className="relative shrink-0">
-                    <Avatar name={s.full_name} src={s.avatar_url} size="sm" />
-                    <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white status-dot status-dot-${s.status}`} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-bold text-text truncate">
-                      {s.honorific ? `${s.honorific} ${s.full_name}` : s.full_name}
-                    </div>
-                    <div className="text-xs text-text-faint truncate">{s.department ?? '—'}</div>
-                    <div className="mt-1"><StatusBadge status={s.status} /></div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Request form */}
-          <div className="lg:col-span-3">
-            {selected ? (
-              <div className="card p-5 sm:p-6">
-                <div className="flex items-center gap-3 mb-5 pb-4 border-b border-border-light">
-                  <Avatar name={selected.full_name} src={selected.avatar_url} size="md" />
-                  <div>
-                    <div className="font-bold text-text">
-                      {selected.honorific ? `${selected.honorific} ${selected.full_name}` : selected.full_name}
-                    </div>
-                    <div className="text-xs text-text-faint">{selected.department}</div>
-                    <div className="mt-1"><StatusBadge status={selected.status} /></div>
-                  </div>
+              {/* Sheet */}
+              <div className="relative w-full bg-white rounded-t-2xl shadow-2xl max-h-[92vh] flex flex-col">
+                {/* Drag handle */}
+                <div className="flex justify-center pt-3 pb-1 shrink-0">
+                  <div className="w-10 h-1 rounded-full bg-gray-200" />
                 </div>
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <label className="form-label">Subject <span className="text-red-500">*</span></label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="e.g. Project discussion, Thesis review..."
-                      value={form.subject}
-                      onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
-                      required
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="form-label">Preferred Date <span className="text-red-500">*</span></label>
-                      <input
-                        type="date"
-                        className="form-input"
-                        min={TODAY}
-                        value={form.preferred_date}
-                        onChange={e => setForm(f => ({ ...f, preferred_date: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="form-label">Preferred Time <span className="text-red-500">*</span></label>
-                      <input
-                        type="time"
-                        className="form-input"
-                        value={form.preferred_time}
-                        onChange={e => setForm(f => ({ ...f, preferred_time: e.target.value }))}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="form-label">Duration</label>
-                    <select
-                      className="form-input"
-                      value={form.duration_mins}
-                      onChange={e => setForm(f => ({ ...f, duration_mins: Number(e.target.value) }))}
-                    >
-                      {DURATIONS.map(d => (
-                        <option key={d.value} value={d.value}>{d.label}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="form-label">Message</label>
-                    <textarea
-                      className="form-input min-h-[90px] resize-none"
-                      placeholder="Briefly describe the purpose of the meeting..."
-                      value={form.message}
-                      onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
-                    />
-                  </div>
-
-                  <div className="flex gap-3 pt-1">
-                    <button type="button" onClick={() => setSelected(null)} className="btn-secondary flex-1">
-                      Clear
-                    </button>
-                    <button type="submit" disabled={submitting} className="btn-primary flex-1">
-                      {submitting ? 'Sending…' : 'Send Request'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            ) : (
-              <div className="card p-8 flex flex-col items-center justify-center text-center gap-3 min-h-[300px]">
-                <div className="w-14 h-14 rounded-full bg-primary-light flex items-center justify-center">
-                  <span className="material-symbols-outlined text-primary" style={{ fontSize: 28 }}>calendar_add_on</span>
+                {/* Sheet header */}
+                <div className="flex items-center justify-between px-5 py-3 border-b border-border-light shrink-0">
+                  <SelectedFacultyHeader faculty={selected} compact />
+                  <button
+                    onClick={() => setSelected(null)}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-surface-low text-text-muted hover:bg-red-50 hover:text-red-500 transition-colors ml-3 shrink-0"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>close</span>
+                  </button>
                 </div>
-                <div>
-                  <div className="font-bold text-text mb-1">Select a Faculty Member</div>
-                  <div className="text-sm text-text-muted">Choose from the list on the left to send a schedule request</div>
+                {/* Scrollable form body */}
+                <div className="overflow-y-auto flex-1 px-5 py-4">
+                  <RequestForm
+                    form={form} setForm={setForm}
+                    submitting={submitting}
+                    onSubmit={handleSubmit}
+                    onClear={() => setSelected(null)}
+                  />
                 </div>
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+          )}
+        </>
       ) : (
         /* My Requests tab */
         <div>
@@ -244,6 +210,94 @@ export default function ScheduleRequestPage() {
         </div>
       )}
     </div>
+  )
+}
+
+function SelectedFacultyHeader({ faculty: s, compact = false }) {
+  const name = s.honorific ? `${s.honorific} ${s.full_name}` : s.full_name
+  return (
+    <div className={`flex items-center gap-3 ${compact ? '' : 'mb-5 pb-4 border-b border-border-light'}`}>
+      <Avatar name={s.full_name} src={s.avatar_url} size={compact ? 'sm' : 'md'} />
+      <div>
+        <div className={`font-bold text-text ${compact ? 'text-sm' : ''}`}>{name}</div>
+        <div className="text-xs text-text-faint">{s.department}</div>
+        {!compact && <div className="mt-1"><StatusBadge status={s.status} /></div>}
+      </div>
+    </div>
+  )
+}
+
+function RequestForm({ form, setForm, submitting, onSubmit, onClear }) {
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div>
+        <label className="form-label">Subject <span className="text-red-500">*</span></label>
+        <input
+          type="text"
+          className="form-input"
+          placeholder="e.g. Project discussion, Thesis review..."
+          value={form.subject}
+          onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
+          required
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="form-label">Preferred Date <span className="text-red-500">*</span></label>
+          <input
+            type="date"
+            className="form-input"
+            min={TODAY}
+            value={form.preferred_date}
+            onChange={e => setForm(f => ({ ...f, preferred_date: e.target.value }))}
+            required
+          />
+        </div>
+        <div>
+          <label className="form-label">Preferred Time <span className="text-red-500">*</span></label>
+          <input
+            type="time"
+            className="form-input"
+            value={form.preferred_time}
+            onChange={e => setForm(f => ({ ...f, preferred_time: e.target.value }))}
+            required
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="form-label">Duration</label>
+        <select
+          className="form-input"
+          value={form.duration_mins}
+          onChange={e => setForm(f => ({ ...f, duration_mins: Number(e.target.value) }))}
+        >
+          {DURATIONS.map(d => (
+            <option key={d.value} value={d.value}>{d.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="form-label">Message</label>
+        <textarea
+          className="form-input min-h-[90px] resize-none"
+          placeholder="Briefly describe the purpose of the meeting..."
+          value={form.message}
+          onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
+        />
+      </div>
+
+      <div className="flex gap-3 pt-1">
+        <button type="button" onClick={onClear} className="btn-secondary flex-1">
+          Clear
+        </button>
+        <button type="submit" disabled={submitting} className="btn-primary flex-1">
+          {submitting ? 'Sending…' : 'Send Request'}
+        </button>
+      </div>
+    </form>
   )
 }
 
