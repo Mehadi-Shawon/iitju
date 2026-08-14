@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FacultyTrack — Project Proposal</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --primary: #4F46E5;
+    --primary-light: #EEF2FF;
+    --primary-dark: #3730A3;
+    --text: #0F172A;
+    --text-muted: #475569;
+    --text-faint: #94A3B8;
+    --border: #E2E8F0;
+    --surface: #F8FAFC;
+    --white: #FFFFFF;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    color: var(--text);
+    background: #fff;
+    font-size: 10.5pt;
+    line-height: 1.65;
+  }
+
+  /* ── Cover Page ── */
+  .cover {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(135deg, #1E1B4B 0%, #312E81 40%, #4338CA 100%);
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+  }
+
+  .cover-noise {
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.3) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(139,92,246,0.2) 0%, transparent 50%),
+      radial-gradient(ellipse at 60% 80%, rgba(79,70,229,0.25) 0%, transparent 50%);
+  }
+
+  .cover-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  .cover-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    padding: 60px 48px;
+    text-align: center;
+  }
+
+  .cover-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 100px;
+    padding: 6px 20px;
+    font-size: 9pt;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.8);
+    margin-bottom: 40px;
+  }
+
+  .cover-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #A5B4FC;
+  }
+
+  .cover-title {
+    font-size: 48pt;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    margin-bottom: 12px;
+  }
+
+  .cover-title span {
+    background: linear-gradient(135deg, #A5B4FC, #818CF8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .cover-subtitle {
+    font-size: 13pt;
+    color: rgba(255,255,255,0.65);
+    font-weight: 400;
+    max-width: 480px;
+    margin: 0 auto 48px;
+    line-height: 1.6;
+  }
+
+  .cover-divider {
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, #818CF8, #A5B4FC);
+    border-radius: 2px;
+    margin: 0 auto 48px;
+  }
+
+  .cover-meta {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    max-width: 560px;
+    width: 100%;
+    margin-bottom: 60px;
+  }
+
+  .cover-meta-item {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 16px 12px;
+  }
+
+  .cover-meta-label {
+    font-size: 7.5pt;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.45);
+    margin-bottom: 4px;
+  }
+
+  .cover-meta-value {
+    font-size: 9.5pt;
+    font-weight: 600;
+    color: rgba(255,255,255,0.9);
+  }
+
+  .cover-footer {
+    position: relative;
+    z-index: 2;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    padding: 20px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .cover-footer-left {
+    font-size: 8pt;
+    color: rgba(255,255,255,0.4);
+    font-weight: 500;
+  }
+
+  .cover-footer-right {
+    font-size: 8pt;
+    color: rgba(255,255,255,0.4);
+  }
+
+  /* ── Body Pages ── */
+  .page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 60px 64px;
+  }
+
+  /* ── Page Header Strip ── */
+  .page-header-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 40px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--primary);
+  }
+
+  .page-header-strip-title {
+    font-size: 9pt;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--primary);
+  }
+
+  .page-header-strip-right {
+    font-size: 8pt;
+    color: var(--text-faint);
+    font-weight: 500;
+  }
+
+  /* ── Section ── */
+  .section {
+    margin-bottom: 44px;
+  }
+
+  .section-number {
+    font-size: 8pt;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--primary);
+    margin-bottom: 6px;
+  }
+
+  .section-title {
+    font-size: 18pt;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin-bottom: 14px;
+    line-height: 1.2;
+  }
+
+  .section-title-sm {
+    font-size: 12pt;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.01em;
+    margin-bottom: 10px;
+    margin-top: 20px;
+  }
+
+  p {
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    line-height: 1.75;
+  }
+
+  /* ── Feature Cards ── */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+
+  .feature-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+
+  .feature-card-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+    font-size: 14pt;
+  }
+
+  .feature-card-title {
+    font-size: 9.5pt;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .feature-card-desc {
+    font-size: 8.5pt;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  /* ── Tables ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0 20px;
+    font-size: 9pt;
+  }
+
+  thead tr {
+    background: var(--primary);
+  }
+
+  thead th {
+    color: #fff;
+    font-weight: 700;
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 8.5pt;
+    letter-spacing: 0.04em;
+  }
+
+  thead th:first-child { border-radius: 8px 0 0 0; }
+  thead th:last-child  { border-radius: 0 8px 0 0; }
+
+  tbody tr { border-bottom: 1px solid var(--border); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:nth-child(even) { background: var(--surface); }
+
+  tbody td {
+    padding: 9px 14px;
+    color: var(--text-muted);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+
+  tbody td:first-child {
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .table-wrap {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 14px 0 20px;
+  }
+
+  /* ── Code / Architecture Block ── */
+  .arch-block {
+    background: #0F172A;
+    border-radius: 10px;
+    padding: 24px 28px;
+    margin: 14px 0;
+    overflow: hidden;
+  }
+
+  .arch-block pre {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8pt;
+    color: #94A3B8;
+    line-height: 1.7;
+    white-space: pre;
+  }
+
+  .arch-block pre .hl  { color: #818CF8; }
+  .arch-block pre .grn { color: #34D399; }
+  .arch-block pre .yel { color: #FCD34D; }
+  .arch-block pre .wht { color: #E2E8F0; }
+
+  /* ── Flow Steps ── */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 14px 0;
+  }
+
+  .flow-item {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .flow-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .flow-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-size: 8.5pt;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .flow-line {
+    width: 2px;
+    flex: 1;
+    min-height: 16px;
+    background: var(--border);
+    margin: 4px 0;
+  }
+
+  .flow-item:last-child .flow-line { display: none; }
+
+  .flow-content {
+    padding-top: 4px;
+    padding-bottom: 16px;
+  }
+
+  .flow-content-title {
+    font-size: 9.5pt;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+
+  .flow-content-desc {
+    font-size: 9pt;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  /* ── Tech Pills ── */
+  .pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 100px;
+    font-size: 8.5pt;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .pill-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+
+  /* ── Info Box ── */
+  .info-box {
+    background: var(--primary-light);
+    border-left: 4px solid var(--primary);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin: 14px 0;
+  }
+
+  .info-box p {
+    color: var(--primary-dark);
+    margin: 0;
+    font-size: 9pt;
+    font-weight: 500;
+  }
+
+  /* ── Developer Card ── */
+  .dev-card {
+    background: linear-gradient(135deg, #1E1B4B, #312E81);
+    border-radius: 16px;
+    padding: 32px 36px;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    margin-top: 20px;
+  }
+
+  .dev-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #818CF8, #A5B4FC);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22pt;
+    font-weight: 900;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .dev-info-name {
+    font-size: 14pt;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.01em;
+    margin-bottom: 6px;
+  }
+
+  .dev-info-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .dev-chip {
+    font-size: 8pt;
+    font-weight: 600;
+    color: rgba(255,255,255,0.65);
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 100px;
+    padding: 3px 10px;
+  }
+
+  /* ── Page Break ── */
+  .page-break { page-break-before: always; }
+
+  /* ── Footer ── */
+  .doc-footer {
+    margin-top: 48px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .doc-footer span {
+    font-size: 8pt;
+    color: var(--text-faint);
+  }
+
+  /* ── TOC ── */
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin: 20px 0;
+  }
+
+  .toc-title {
+    font-size: 10pt;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--primary);
+    margin-bottom: 18px;
+  }
+
+  .toc-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 0;
+    border-bottom: 1px dashed var(--border);
+    font-size: 9.5pt;
+  }
+
+  .toc-item:last-child { border-bottom: none; }
+
+  .toc-item-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .toc-item-num {
+    font-size: 8pt;
+    font-weight: 700;
+    color: var(--primary);
+    width: 20px;
+  }
+
+  .toc-dots {
+    flex: 1;
+    border-bottom: 1px dotted var(--border);
+    margin: 0 8px;
+    height: 1px;
+    align-self: flex-end;
+    margin-bottom: 3px;
+  }
+
+  .toc-page {
+    font-size: 8.5pt;
+    font-weight: 600;
+    color: var(--text-faint);
+  }
+
+  /* ── Schema Column ── */
+  .schema-col {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8pt;
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+
+  /* ── Print ── */
+  @media print {
+    body { font-size: 10pt; }
+    .cover { min-height: 100vh; }
+    .page { padding: 48px 56px; }
+    .arch-block pre { font-size: 7.5pt; }
+    a { text-decoration: none; color: inherit; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ COVER PAGE ══════════════════ -->
+<div class="cover">
+  <div class="cover-noise"></div>
+  <div class="cover-grid"></div>
+
+  <div class="cover-content">
+    <div class="cover-badge">
+      <div class="cover-dot"></div>
+      Project Proposal &amp; Technical Report · 2026
+    </div>
+
+    <div class="cover-title">
+      Faculty<span>Track</span>
+    </div>
+
+    <p class="cover-subtitle">
+      Real-Time Faculty Presence &amp; Schedule Management System<br/>
+      for Smart Campus Environments
+    </p>
+
+    <div class="cover-divider"></div>
+
+    <div class="cover-meta">
+      <div class="cover-meta-item">
+        <div class="cover-meta-label">Institution</div>
+        <div class="cover-meta-value">IIT, Jahangirnagar University</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="cover-meta-label">Developer</div>
+        <div class="cover-meta-value">Md. Mehadi Hasan Shawon</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="cover-meta-label">Year</div>
+        <div class="cover-meta-value">2026</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cover-footer">
+    <div class="cover-footer-left">Institute of Information Technology &nbsp;·&nbsp; Jahangirnagar University</div>
+    <div class="cover-footer-right">Confidential — Academic Project</div>
+  </div>
+</div>
+
+
+<!-- ══════════════════ PAGE 2 — OVERVIEW ══════════════════ -->
+<div class="page page-break">
+
+  <div class="page-header-strip">
+    <div class="page-header-strip-title">FacultyTrack — Project Proposal</div>
+    <div class="page-header-strip-right">IIT · Jahangirnagar University · 2026</div>
+  </div>
+
+  <!-- Table of Contents -->
+  <div class="section">
+    <div class="section-number">Contents</div>
+    <div class="section-title">Table of Contents</div>
+    <div class="toc">
+      <div class="toc-title">Document Outline</div>
+
+      <div class="toc-item">
+        <div class="toc-item-label"><span class="toc-item-num">01</span> Introduction</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">3</div>
+      </div>
+      <div class="toc-item">
+        <div class="toc-item-label"><span class="toc-item-num">02</span> Problem Statement</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">3</div>
+      </div>
+      <div class="toc-item">
+        <div class="toc-item-label"><span class="toc-item-num">03</span> Objectives</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">3</div>
+      </div>
+      <div class="toc-item">
+        <div class="toc-item-label"><span class="toc-item-num">04</span> Scope</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">4</div>
+      </div>
+      <div class="toc-item">
+        <div class="toc-item-label"><span class="toc-item-num">05</span> System Features</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">4</div>
+      </div>
+      <div class="toc-item">
+        <div class="toc-item-label"><span class="toc-item-num">06</span> Tools &amp; Technologies</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">6</div>
+      </div>
+      <div class="toc-item">
+        <div class="toc-item-label"><span class="toc-item-num">07</span> System Architecture</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">7</div>
+      </div>
+      <div class="toc-item">
+        <div class="toc-item-label"><span class="toc-item-num">08</span> Database Schema</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">8</div>
+      </div>
+      <div class="toc-item">
+        <div class="toc-item-label"><span class="toc-item-num">09</span> How It Works — User Flows</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">10</div>
+      </div>
+      <div class="toc-item">
+        <div class="toc-item-label"><span class="toc-item-num">10</span> Security Model</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">11</div>
+      </div>
+      <div class="toc-item">
+        <div class="toc-item-label"><span class="toc-item-num">11</span> Deployment</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">11</div>
+      </div>
+      <div class="toc-item">
+        <div class="toc-item-label"><span class="toc-item-num">12</span> Future Scope</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">11</div>
+      </div>
+      <div class="toc-item">
+        <div class="toc-item-label"><span class="toc-item-num">13</span> Developer Information</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">12</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    <span>FacultyTrack · Project Proposal</span>
+    <span>Page 2</span>
+  </div>
+</div>
+
+
+<!-- ══════════════════ PAGE 3 — INTRO / PROBLEM / OBJECTIVES ══════════════════ -->
+<div class="page page-break">
+
+  <div class="page-header-strip">
+    <div class="page-header-strip-title">Introduction &amp; Objectives</div>
+    <div class="page-header-strip-right">FacultyTrack · 2026</div>
+  </div>
+
+  <!-- Section 1 -->
+  <div class="section">
+    <div class="section-number">Section 01</div>
+    <div class="section-title">Introduction</div>
+    <p>Modern university campuses face a persistent challenge: students and administrative staff have no reliable way to know whether a faculty member is available, where they are located, or when they can be approached. Traditional notice boards, phone calls, and manual room visits are inefficient and time-consuming.</p>
+    <p><strong>FacultyTrack</strong> addresses this problem by providing a centralized, real-time digital platform that tracks faculty availability, enables students to request meeting schedules, and allows faculty to manage their own presence status — all accessible from any device through a web browser, with no installation required.</p>
+  </div>
+
+  <!-- Section 2 -->
+  <div class="section">
+    <div class="section-number">Section 02</div>
+    <div class="section-title">Problem Statement</div>
+    <p>In a typical university environment, the following problems are consistently observed:</p>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-card-icon">🕐</div>
+        <div class="feature-card-title">Wasted Time</div>
+        <p class="feature-card-desc">Students visit faculty offices only to find them absent or occupied, wasting valuable academic time.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-icon">📡</div>
+        <div class="feature-card-title">No Availability Signal</div>
+        <p class="feature-card-desc">Faculty have no streamlined way to communicate their current availability or location to students.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-icon">📋</div>
+        <div class="feature-card-title">No Centralized Dashboard</div>
+        <p class="feature-card-desc">Administrative staff lack a single view to monitor faculty presence across the entire campus.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-icon">📩</div>
+        <div class="feature-card-title">Informal Appointment Booking</div>
+        <p class="feature-card-desc">Meeting requests are handled via phone or text with no tracking, confirmation, or accountability.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 3 -->
+  <div class="section">
+    <div class="section-number">Section 03</div>
+    <div class="section-title">Objectives</div>
+    <div class="flow">
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">1</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">Real-Time Visibility</div>
+          <p class="flow-content-desc">Provide live faculty availability status and campus location to all stakeholders.</p>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">2</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">Digital Meeting Requests</div>
+          <p class="flow-content-desc">Enable students to send, track, and manage scheduled meeting requests with faculty.</p>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">3</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">Self-Managed Status</div>
+          <p class="flow-content-desc">Allow faculty to update their own availability status and location instantly from any device.</p>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">4</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">Admin Control Panel</div>
+          <p class="flow-content-desc">Give administrators tools to manage users, monitor activity, and operate QR-based check-ins.</p>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">5</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">Secure Role-Based Access</div>
+          <p class="flow-content-desc">Enforce appropriate access controls for admins, faculty, and students at both UI and database levels.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    <span>FacultyTrack · Project Proposal</span>
+    <span>Page 3</span>
+  </div>
+</div>
+
+
+<!-- ══════════════════ PAGE 4 — SCOPE & FEATURES ══════════════════ -->
+<div class="page page-break">
+
+  <div class="page-header-strip">
+    <div class="page-header-strip-title">Scope &amp; System Features</div>
+    <div class="page-header-strip-right">FacultyTrack · 2026</div>
+  </div>
+
+  <!-- Section 4 -->
+  <div class="section">
+    <div class="section-number">Section 04</div>
+    <div class="section-title">Scope</div>
+    <p>The system covers three primary user roles, each with a tailored set of capabilities:</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>Access Level</th>
+            <th>Key Capabilities</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Admin</td>
+            <td>Full system access</td>
+            <td>User management, QR scanning, activity monitoring, submission oversight, system settings, own profile</td>
+          </tr>
+          <tr>
+            <td>Faculty</td>
+            <td>Personal + schedule + review</td>
+            <td>Profile management, real-time status updates, QR check-in, incoming schedule requests, reviewing student thesis and project submissions</td>
+          </tr>
+          <tr>
+            <td>Student</td>
+            <td>Read + request + submit</td>
+            <td>Live faculty directory, submit meeting requests, submit thesis and project reports as PDF, track review status, notifications</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Section 5 -->
+  <div class="section">
+    <div class="section-number">Section 05</div>
+    <div class="section-title">System Features</div>
+
+    <div class="section-title-sm">5.1 &nbsp;Faculty Directory</div>
+    <p>A real-time grid dashboard displaying all faculty members with live status, location, and last-seen timestamps. Students and staff can search by name or department and filter by any status value. A statistics panel shows on-campus percentage, available count, and occupancy breakdown at a glance.</p>
+
+    <div class="section-title-sm">5.2 &nbsp;Real-Time Status Updates</div>
+    <p>Faculty can update their own status, location, and note instantly. Status options include: <strong>Available, In Meeting, In Class, In Lab, On Break, Busy, Away, Off Campus, On Leave,</strong> and <strong>Offline</strong>. Updates are reflected across all connected clients within milliseconds via WebSocket subscriptions, with every change logged in the activity audit trail.</p>
+
+    <div class="section-title-sm">5.3 &nbsp;QR Code Check-In System</div>
+    <p>Each faculty member has a unique QR code encoding their ID and name. Admins operate a camera-based QR scanner terminal; scanning a faculty QR code automatically sets their status to "Available" and records a timestamped check-in event in the activity log.</p>
+
+    <div class="section-title-sm">5.4 &nbsp;Schedule Request System</div>
+    <p>Students can browse the live faculty list, select a member, and submit a meeting request specifying subject, preferred date and time, duration (15–60 min), and an optional message. Faculty can accept or decline requests with an optional response note. Students can cancel pending requests. Full history is visible to both parties with status tracking.</p>
+
+    <div class="section-title-sm">5.5 &nbsp;In-App Notification System</div>
+    <p>Real-time notifications are delivered instantly without page refresh via Supabase Realtime. A bell icon in the top navigation bar shows an unread count badge. The sidebar navigation also displays a badge on the schedule page when new unread activity exists. Clicking a notification marks it as read and navigates directly to the relevant page.</p>
+
+    <div class="info-box">
+      <p>📣 &nbsp;<strong>Notification triggers:</strong> Student submits request → Faculty notified · Faculty accepts → Student notified · Faculty declines → Student notified · Student cancels → Faculty notified · Student submits a thesis/project PDF → Faculty notified · Faculty approves, rejects or requests a revision → Student notified.</p>
+    </div>
+
+  </div>
+
+  <div class="doc-footer">
+    <span>FacultyTrack · Project Proposal</span>
+    <span>Page 4</span>
+  </div>
+</div>
+
+
+<!-- ══════════════════ PAGE 5 — SUBMISSION SYSTEM ══════════════════ -->
+<div class="page page-break">
+
+  <div class="page-header-strip">
+    <div class="page-header-strip-title">System Features &nbsp;·&nbsp; continued</div>
+    <div class="page-header-strip-right">FacultyTrack · 2026</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title-sm">5.6 &nbsp;Thesis &amp; Project Submission System</div>
+    <p>Students submit their thesis or project report as a <strong>PDF</strong> addressed to one specific faculty member, together with a title, document type, and an abstract or note. Files are validated on the client and again by the storage bucket — PDF only, maximum 15 MB — and are stored in a <strong>private</strong> bucket, reachable only through short-lived signed URLs rather than a permanent public link.</p>
+    <p>The reviewing faculty member opens the PDF and records a decision: <strong>Approve</strong> or <strong>Deny</strong>. Before approving they may correct the submission's title and document type, which the interface surfaces as <strong>Edit &amp; Approve</strong> — one action that saves the correction and the approval together. Written feedback is mandatory for a denial, so the student always receives a reason.</p>
+    <p>A resubmission is stored as a <strong>new version row</strong> rather than an edit of the original, so the complete revision history is preserved. Both the student and the faculty member see every version, its status, its feedback and its timestamps — giving each side a per-student submission activity log. Faculty additionally get a <em>By Student</em> view that rolls up all of a student's works, upload counts and outcomes in one place.</p>
+
+    <div class="info-box">
+      <p>📄 &nbsp;<strong>Status lifecycle:</strong> submitted → under review → approved · or → denied → student resubmits as v2 → review repeats. Every transition is timestamped, notified to the other party in real time, and recorded as its own version row.</p>
+    </div>
+
+    <div class="section-title-sm">5.7 &nbsp;Admin Panel</div>
+    <p>A comprehensive control panel with five modules: <strong>User Management</strong> (create, edit, delete accounts, reset passwords, upload photos), <strong>QR Scanner Terminal</strong> (camera-based check-in), <strong>Submissions</strong> (oversight of every student submission and its review outcome), <strong>Activity Log</strong> (full audit of check-ins and status changes), and <strong>System Settings</strong> (campus configuration).</p>
+  </div>
+
+  <div class="doc-footer">
+    <span>FacultyTrack · Project Proposal</span>
+    <span>Page 5</span>
+  </div>
+</div>
+
+
+<!-- ══════════════════ PAGE 6 — TOOLS & TECH ══════════════════ -->
+<div class="page page-break">
+
+  <div class="page-header-strip">
+    <div class="page-header-strip-title">Tools &amp; Technologies</div>
+    <div class="page-header-strip-right">FacultyTrack · 2026</div>
+  </div>
+
+  <div class="section">
+    <div class="section-number">Section 06</div>
+    <div class="section-title">Tools &amp; Technologies</div>
+
+    <div class="section-title-sm">6.1 &nbsp;Frontend</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Tool</th><th>Version</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>React</td><td>18.2.0</td><td>UI component framework, hooks-based state management</td></tr>
+          <tr><td>Vite</td><td>5.0.0</td><td>Build tool, hot module replacement, fast dev server</td></tr>
+          <tr><td>React Router</td><td>v6.21.0</td><td>Client-side routing, protected route guards</td></tr>
+          <tr><td>Tailwind CSS</td><td>3.4.1</td><td>Utility-first styling, responsive design</td></tr>
+          <tr><td>date-fns</td><td>—</td><td>Date formatting, relative time display</td></tr>
+          <tr><td>react-hot-toast</td><td>—</td><td>Toast notification popups</td></tr>
+          <tr><td>qrcode.react</td><td>—</td><td>SVG QR code generation</td></tr>
+          <tr><td>html5-qrcode</td><td>—</td><td>Camera-based QR code scanning</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section-title-sm">6.2 &nbsp;Backend &amp; Database</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Tool</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Supabase</td><td>Backend-as-a-service platform, API generation</td></tr>
+          <tr><td>PostgreSQL</td><td>Relational database hosted and managed via Supabase</td></tr>
+          <tr><td>Supabase Auth</td><td>User authentication, session management, JWT tokens</td></tr>
+          <tr><td>Supabase Realtime</td><td>WebSocket-based live data subscriptions (postgres_changes)</td></tr>
+          <tr><td>Supabase Storage</td><td>Profile photo uploads and public CDN serving</td></tr>
+          <tr><td>Row-Level Security</td><td>Database-level access control policies per user role</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section-title-sm">6.3 &nbsp;Programming Languages</div>
+    <div class="pills">
+      <div class="pill"><div class="pill-dot" style="background:#F7DF1E"></div> JavaScript (ES2023)</div>
+      <div class="pill"><div class="pill-dot" style="background:#61DAFB"></div> JSX (React)</div>
+      <div class="pill"><div class="pill-dot" style="background:#336791"></div> SQL (PostgreSQL)</div>
+      <div class="pill"><div class="pill-dot" style="background:#38BDF8"></div> CSS (Tailwind)</div>
+    </div>
+    <p>The entire application — frontend logic, component structure, and database interactions — is written in <strong>JavaScript (ES2023)</strong> using modern features including async/await, optional chaining, destructuring, and the module system. React components are authored in <strong>JSX</strong>. Database schema, RLS policies, and stored procedures are written in <strong>SQL</strong>.</p>
+
+    <div class="section-title-sm">6.4 &nbsp;Development &amp; Deployment</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Tool</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Git</td><td>Distributed version control</td></tr>
+          <tr><td>GitHub</td><td>Remote repository hosting, collaboration</td></tr>
+          <tr><td>Vercel</td><td>Production deployment, CDN, automatic builds on push</td></tr>
+          <tr><td>npm</td><td>Package management and dependency resolution</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    <span>FacultyTrack · Project Proposal</span>
+    <span>Page 6</span>
+  </div>
+</div>
+
+
+<!-- ══════════════════ PAGE 7 — ARCHITECTURE ══════════════════ -->
+<div class="page page-break">
+
+  <div class="page-header-strip">
+    <div class="page-header-strip-title">System Architecture</div>
+    <div class="page-header-strip-right">FacultyTrack · 2026</div>
+  </div>
+
+  <div class="section">
+    <div class="section-number">Section 07</div>
+    <div class="section-title">System Architecture</div>
+    <p>FacultyTrack follows a <strong>client-server architecture</strong> where the React frontend communicates directly with Supabase via its JavaScript SDK. There is no custom backend server — Supabase's auto-generated REST API and WebSocket layer serve all data needs, while Row-Level Security policies enforce authorization at the database level.</p>
+
+    <div class="arch-block">
+      <pre>
+<span class="hl">┌─────────────────────────────────────────────────────────┐</span>
+<span class="hl">│</span>                  <span class="wht">Browser (Client)</span>                       <span class="hl">│</span>
+<span class="hl">│</span>                                                         <span class="hl">│</span>
+<span class="hl">│</span>  <span class="grn">React 18 + Vite (JavaScript / JSX)</span>                    <span class="hl">│</span>
+<span class="hl">│</span>                                                         <span class="hl">│</span>
+<span class="hl">│</span>  <span class="yel">Pages</span>           <span class="yel">Components</span>        <span class="yel">Data Hooks</span>           <span class="hl">│</span>
+<span class="hl">│</span>  Dashboard       AppLayout          useStaffList()       <span class="hl">│</span>
+<span class="hl">│</span>  SchedulePage    NotifBell          useScheduleReqs()    <span class="hl">│</span>
+<span class="hl">│</span>  AdminPanel      Sidebar            useNotifications()   <span class="hl">│</span>
+<span class="hl">│</span>                                     useMyStatus()        <span class="hl">│</span>
+<span class="hl">│</span>                                                         <span class="hl">│</span>
+<span class="hl">│</span>          React Router v6  ·  AuthContext                 <span class="hl">│</span>
+<span class="hl">└─────────────────────────────────────────────────────────┘</span>
+                           │
+               <span class="wht">Supabase JS SDK  (REST + WebSocket)</span>
+                           │
+<span class="hl">┌─────────────────────────────────────────────────────────┐</span>
+<span class="hl">│</span>                  <span class="wht">Supabase Platform</span>                       <span class="hl">│</span>
+<span class="hl">│</span>                                                         <span class="hl">│</span>
+<span class="hl">│</span>  <span class="grn">Auth</span>            <span class="grn">Realtime</span>          <span class="grn">Storage</span>              <span class="hl">│</span>
+<span class="hl">│</span>  JWT Sessions    WebSocket subs      Profile photos       <span class="hl">│</span>
+<span class="hl">│</span>  Role metadata   postgres_changes    Public CDN           <span class="hl">│</span>
+<span class="hl">│</span>                                                         <span class="hl">│</span>
+<span class="hl">│</span>  <span class="yel">PostgreSQL Database</span>                                    <span class="hl">│</span>
+<span class="hl">│</span>  ┌─────────────┬────────────────┬────────────────────┐  <span class="hl">│</span>
+<span class="hl">│</span>  │  profiles   │  staff_status  │   activity_log     │  <span class="hl">│</span>
+<span class="hl">│</span>  ├─────────────┴────────────────┴────────────────────┤  <span class="hl">│</span>
+<span class="hl">│</span>  │  schedule_requests  │  notifications              │  <span class="hl">│</span>
+<span class="hl">│</span>  └─────────────────────┴─────────────────────────────┘  <span class="hl">│</span>
+<span class="hl">│</span>                Row-Level Security on all tables          <span class="hl">│</span>
+<span class="hl">└─────────────────────────────────────────────────────────┘</span>
+                           │
+              <span class="wht">Vercel (Production Hosting + CDN)</span>
+      </pre>
+    </div>
+
+    <div class="section-title-sm">Key Design Decisions</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Decision</th><th>Rationale</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>No custom backend server</td><td>Supabase's auto-generated API eliminates boilerplate and reduces operational overhead for an academic project</td></tr>
+          <tr><td>Row-Level Security over API middleware</td><td>Authorization enforced at the database layer cannot be bypassed by modifying frontend code</td></tr>
+          <tr><td>WebSocket realtime over polling</td><td>Instant updates across all clients without the latency and overhead of repeated HTTP polling</td></tr>
+          <tr><td>Client-side role routing</td><td>Combined with RLS, provides fast UX without exposing unauthorized routes even if URL is guessed</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    <span>FacultyTrack · Project Proposal</span>
+    <span>Page 7</span>
+  </div>
+</div>
+
+
+<!-- ══════════════════ PAGE 8 — DATABASE SCHEMA ══════════════════ -->
+<div class="page page-break">
+
+  <div class="page-header-strip">
+    <div class="page-header-strip-title">Database Schema</div>
+    <div class="page-header-strip-right">FacultyTrack · 2026</div>
+  </div>
+
+  <div class="section">
+    <div class="section-number">Section 08</div>
+    <div class="section-title">Database Schema</div>
+    <p>The system uses five PostgreSQL tables managed by Supabase, each with Row-Level Security enabled. All primary keys use UUID generated server-side, and all timestamps use <span class="schema-col">TIMESTAMPTZ</span> for timezone consistency.</p>
+
+    <div class="section-title-sm">profiles</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Column</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>id</td><td><span class="schema-col">UUID</span></td><td>Primary key, linked to auth.users</td></tr>
+          <tr><td>full_name</td><td><span class="schema-col">TEXT</span></td><td>User's full name</td></tr>
+          <tr><td>email</td><td><span class="schema-col">TEXT</span></td><td>Email address</td></tr>
+          <tr><td>role</td><td><span class="schema-col">TEXT</span></td><td>admin · staff · student</td></tr>
+          <tr><td>honorific</td><td><span class="schema-col">TEXT</span></td><td>e.g. Dr., Prof., Mr.</td></tr>
+          <tr><td>department</td><td><span class="schema-col">TEXT</span></td><td>Academic department</td></tr>
+          <tr><td>student_id</td><td><span class="schema-col">TEXT</span></td><td>Student ID (students only)</td></tr>
+          <tr><td>avatar_url</td><td><span class="schema-col">TEXT</span></td><td>Supabase Storage photo URL</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section-title-sm">staff_status</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Column</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>staff_id</td><td><span class="schema-col">UUID → profiles</span></td><td>Foreign key to faculty profile</td></tr>
+          <tr><td>status</td><td><span class="schema-col">TEXT</span></td><td>Current presence status value</td></tr>
+          <tr><td>location</td><td><span class="schema-col">TEXT</span></td><td>Current room or campus area</td></tr>
+          <tr><td>note</td><td><span class="schema-col">TEXT</span></td><td>Optional contextual note</td></tr>
+          <tr><td>updated_at</td><td><span class="schema-col">TIMESTAMPTZ</span></td><td>Last status update timestamp</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section-title-sm">schedule_requests</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Column</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>student_id</td><td><span class="schema-col">UUID → profiles</span></td><td>Requesting student</td></tr>
+          <tr><td>staff_id</td><td><span class="schema-col">UUID → profiles</span></td><td>Target faculty member</td></tr>
+          <tr><td>subject</td><td><span class="schema-col">TEXT</span></td><td>Meeting subject/title</td></tr>
+          <tr><td>preferred_date</td><td><span class="schema-col">DATE</span></td><td>Requested meeting date</td></tr>
+          <tr><td>preferred_time</td><td><span class="schema-col">TIME</span></td><td>Requested meeting time</td></tr>
+          <tr><td>duration_mins</td><td><span class="schema-col">INT</span></td><td>Duration: 15 / 30 / 45 / 60</td></tr>
+          <tr><td>status</td><td><span class="schema-col">TEXT</span></td><td>pending · accepted · declined · cancelled</td></tr>
+          <tr><td>staff_note</td><td><span class="schema-col">TEXT</span></td><td>Faculty's response note</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <div class="doc-footer">
+    <span>FacultyTrack · Project Proposal</span>
+    <span>Page 8</span>
+  </div>
+</div>
+
+
+<!-- ══════════════════ PAGE 9 — DATABASE SCHEMA (cont.) ══════════════════ -->
+<div class="page page-break">
+
+  <div class="page-header-strip">
+    <div class="page-header-strip-title">Database Schema &nbsp;·&nbsp; continued</div>
+    <div class="page-header-strip-right">FacultyTrack · 2026</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title-sm">thesis_submissions</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Column</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>student_id</td><td><span class="schema-col">UUID → profiles</span></td><td>Submitting student</td></tr>
+          <tr><td>staff_id</td><td><span class="schema-col">UUID → profiles</span></td><td>Reviewing faculty member</td></tr>
+          <tr><td>title</td><td><span class="schema-col">TEXT</span></td><td>Title of the thesis or project</td></tr>
+          <tr><td>doc_type</td><td><span class="schema-col">TEXT</span></td><td>thesis · project</td></tr>
+          <tr><td>abstract</td><td><span class="schema-col">TEXT</span></td><td>Abstract or note for the reviewer</td></tr>
+          <tr><td>file_path</td><td><span class="schema-col">TEXT</span></td><td>Object path in the private <code>submissions</code> bucket</td></tr>
+          <tr><td>file_name</td><td><span class="schema-col">TEXT</span></td><td>Original filename, for display</td></tr>
+          <tr><td>file_size</td><td><span class="schema-col">INT</span></td><td>Size in bytes (15 MB cap)</td></tr>
+          <tr><td>version</td><td><span class="schema-col">INT</span></td><td>Version number within its revision chain</td></tr>
+          <tr><td>parent_id</td><td><span class="schema-col">UUID → self</span></td><td>First version of the chain; NULL for v1</td></tr>
+          <tr><td>status</td><td><span class="schema-col">TEXT</span></td><td>submitted · under_review · approved · rejected</td></tr>
+          <tr><td>feedback</td><td><span class="schema-col">TEXT</span></td><td>Faculty's written review comments</td></tr>
+          <tr><td>reviewed_at</td><td><span class="schema-col">TIMESTAMPTZ</span></td><td>When the decision was recorded</td></tr>
+          <tr><td>reviewed_by</td><td><span class="schema-col">UUID → profiles</span></td><td>Who recorded the decision</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section-title-sm">notifications</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Column</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>user_id</td><td><span class="schema-col">UUID → profiles</span></td><td>Notification recipient</td></tr>
+          <tr><td>type</td><td><span class="schema-col">TEXT</span></td><td>schedule_request · schedule_accepted · schedule_declined · schedule_cancelled · submission_new · submission_under_review · submission_approved · submission_rejected</td></tr>
+          <tr><td>title</td><td><span class="schema-col">TEXT</span></td><td>Short notification heading</td></tr>
+          <tr><td>body</td><td><span class="schema-col">TEXT</span></td><td>Full notification message</td></tr>
+          <tr><td>request_id</td><td><span class="schema-col">UUID → schedule_requests</span></td><td>Linked meeting request, if any</td></tr>
+          <tr><td>submission_id</td><td><span class="schema-col">UUID → thesis_submissions</span></td><td>Linked submission, if any</td></tr>
+          <tr><td>read</td><td><span class="schema-col">BOOLEAN</span></td><td>Read/unread state</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    <span>FacultyTrack · Project Proposal</span>
+    <span>Page 9</span>
+  </div>
+</div>
+
+
+<!-- ══════════════════ PAGE 10 — USER FLOWS ══════════════════ -->
+<div class="page page-break">
+
+  <div class="page-header-strip">
+    <div class="page-header-strip-title">How It Works — User Flows</div>
+    <div class="page-header-strip-right">FacultyTrack · 2026</div>
+  </div>
+
+  <div class="section">
+    <div class="section-number">Section 09</div>
+    <div class="section-title">How It Works — User Flows</div>
+
+    <div class="section-title-sm">9.1 &nbsp;Faculty Check-In Flow</div>
+    <div class="flow">
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">1</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">Faculty arrives on campus</div>
+          <p class="flow-content-desc">Faculty opens FacultyTrack on their device and navigates to the QR Check-In page.</p>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">2</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">QR code displayed</div>
+          <p class="flow-content-desc">Their unique QR code (containing staff ID and name) is displayed on screen.</p>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">3</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">Admin scans the code</div>
+          <p class="flow-content-desc">Admin uses the QR Scanner terminal (camera-based) to scan the faculty's QR code.</p>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">4</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">Status updated automatically</div>
+          <p class="flow-content-desc">The system sets the faculty's status to "Available", logs a check-in event, and instantly updates the dashboard for all connected users.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title-sm">9.2 &nbsp;Student Meeting Request Flow</div>
+    <div class="flow">
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">1</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">Student browses faculty directory</div>
+          <p class="flow-content-desc">Student logs in with Student ID and opens "Request Schedule". They browse faculty with live status indicators.</p>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">2</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">Student submits a request</div>
+          <p class="flow-content-desc">Selects a faculty member and fills in subject, preferred date, time, duration, and an optional message, then submits.</p>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">3</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">Faculty receives instant notification</div>
+          <p class="flow-content-desc">A real-time notification appears on the faculty's bell icon with a sidebar badge on "Schedule Requests".</p>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">4</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">Faculty responds</div>
+          <p class="flow-content-desc">Faculty opens the request, reviews the details, and accepts or declines with an optional note.</p>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">5</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">Student notified of response</div>
+          <p class="flow-content-desc">The student receives an instant notification showing the faculty's decision and any note provided.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title-sm">9.3 &nbsp;Faculty Status Self-Update Flow</div>
+    <div class="flow">
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">1</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">Faculty opens My Profile</div>
+          <p class="flow-content-desc">Faculty logs in and navigates to their profile page where their current status is displayed.</p>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">2</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">Status updated</div>
+          <p class="flow-content-desc">Selects a new status, enters a location (e.g. "Room 402") and an optional note, then clicks Update.</p>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">3</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">Instant dashboard update</div>
+          <p class="flow-content-desc">The change is immediately visible to all connected users on the Faculty Directory dashboard.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title-sm">9.4 &nbsp;Thesis / Project Submission &amp; Review Flow</div>
+    <div class="flow">
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">1</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">Student prepares the submission</div>
+          <p class="flow-content-desc">Student opens "My Submissions", chooses Thesis or Project Report, enters a title and abstract, and selects the faculty member who will review it.</p>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">2</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">PDF uploaded to private storage</div>
+          <p class="flow-content-desc">The file is checked for type and size, then uploaded into a private bucket under a path owned by that student. A database row records the metadata and sets the status to <strong>submitted</strong>.</p>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">3</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">Faculty notified in real time</div>
+          <p class="flow-content-desc">A notification appears on the reviewing faculty member's bell icon, with a badge on the "Submissions" sidebar item. No other faculty member can see the submission.</p>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">4</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">Faculty reads the PDF</div>
+          <p class="flow-content-desc">Clicking "Start Review" moves the status to <strong>under review</strong> and notifies the student. Opening the PDF generates a short-lived signed URL valid for five minutes.</p>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">5</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">Faculty records a decision</div>
+          <p class="flow-content-desc">In the review dialog the faculty member may correct the title and type, writes feedback, and chooses <strong>Approve</strong> or <strong>Deny</strong>. Correcting a field turns the approve button into <strong>Edit &amp; Approve</strong>. Feedback is required to deny.</p>
+        </div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-left"><div class="flow-num">6</div><div class="flow-line"></div></div>
+        <div class="flow-content">
+          <div class="flow-content-title">Student notified — and may revise</div>
+          <p class="flow-content-desc">The student is notified instantly and reads the feedback. If it was denied, "Resubmit" pre-fills the form and the corrected PDF is stored as version 2, linked to the original so the whole history remains visible to both sides.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    <span>FacultyTrack · Project Proposal</span>
+    <span>Page 10</span>
+  </div>
+</div>
+
+
+<!-- ══════════════════ PAGE 11 — SECURITY / DEPLOYMENT / FUTURE ══════════════════ -->
+<div class="page page-break">
+
+  <div class="page-header-strip">
+    <div class="page-header-strip-title">Security · Deployment · Future Scope</div>
+    <div class="page-header-strip-right">FacultyTrack · 2026</div>
+  </div>
+
+  <!-- Section 10 -->
+  <div class="section">
+    <div class="section-number">Section 10</div>
+    <div class="section-title">Security Model</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Layer</th><th>Mechanism</th><th>What it protects</th></tr></thead>
+        <tbody>
+          <tr><td>Authentication</td><td>Supabase Auth · JWT tokens</td><td>All routes require a valid session. Unauthenticated users are redirected to login.</td></tr>
+          <tr><td>Route Guards</td><td>RequireAuth HOC with role check</td><td>Admin-only and staff-only pages redirect unauthorized users to dashboard.</td></tr>
+          <tr><td>Database RLS</td><td>PostgreSQL Row-Level Security</td><td>Every table has policies — users can only read/write rows they are authorized for.</td></tr>
+          <tr><td>Student Insert Control</td><td>RLS WITH CHECK clause</td><td>Students can only insert schedule requests and submissions where student_id matches their own UID.</td></tr>
+          <tr><td>Review Integrity</td><td>RLS UPDATE policy excludes students</td><td>Only the assigned faculty member (or an admin) can change a submission's status or feedback — a student cannot approve or reopen their own work.</td></tr>
+          <tr><td>Submission Privacy</td><td>RLS SELECT policy</td><td>A submission row is visible only to its author, the faculty member it was sent to, and admins. No other student or faculty member can read it.</td></tr>
+          <tr><td>Private File Storage</td><td>Non-public bucket + storage policies + signed URLs</td><td>Thesis PDFs have no permanent public URL. Uploads are restricted to a folder owned by the uploading student, and reads are limited to the owner, the assigned reviewer and admins.</td></tr>
+          <tr><td>Upload Validation</td><td>Client checks + bucket constraints</td><td>Only <code>application/pdf</code> files up to 15 MB are accepted; the bucket re-enforces both limits server-side.</td></tr>
+          <tr><td>Notification Privacy</td><td>RLS SELECT policy</td><td>Users can only read notifications addressed to their own user_id.</td></tr>
+          <tr><td>Secrets Management</td><td>Vercel Environment Variables</td><td>API keys never committed to the repository; injected at build time.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="info-box">
+      <p>🔒 &nbsp;Authorization is enforced at the <strong>database level</strong> via RLS, not just in the UI. This means even if a user manually crafts an API request, they cannot access data outside their permitted scope.</p>
+    </div>
+  </div>
+
+  <!-- Section 11 -->
+  <div class="section">
+    <div class="section-number">Section 11</div>
+    <div class="section-title">Deployment</div>
+    <p>The application is deployed on <strong>Vercel</strong> with continuous deployment from the <strong>GitHub</strong> <code>main</code> branch. Every push to <code>main</code> triggers an automatic rebuild and global CDN deployment. Environment variables are configured securely in Vercel's project settings and are never exposed in the source repository.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Component</th><th>Platform</th><th>Details</th></tr></thead>
+        <tbody>
+          <tr><td>Frontend Hosting</td><td>Vercel</td><td>Global CDN, automatic HTTPS, instant deploys on git push</td></tr>
+          <tr><td>Database</td><td>Supabase (AWS)</td><td>PostgreSQL on managed infrastructure with automatic backups</td></tr>
+          <tr><td>Auth</td><td>Supabase Auth</td><td>JWT-based sessions with auto token refresh</td></tr>
+          <tr><td>File Storage</td><td>Supabase Storage</td><td>S3-compatible object storage — a public bucket for profile photos and a private bucket for submitted PDFs</td></tr>
+          <tr><td>Source Control</td><td>GitHub</td><td>Main branch protected, CI triggered on every push</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Section 12 -->
+  <div class="section">
+    <div class="section-number">Section 12</div>
+    <div class="section-title">Future Scope</div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-card-icon">🤖</div>
+        <div class="feature-card-title">AI Chat Assistant</div>
+        <p class="feature-card-desc">An embedded assistant powered by Claude (Anthropic) for natural language faculty queries, meeting booking, and status updates.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-icon">📧</div>
+        <div class="feature-card-title">Email &amp; SMS Alerts</div>
+        <p class="feature-card-desc">Push schedule updates beyond the web via SendGrid or Twilio for SMS notifications.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-icon">📅</div>
+        <div class="feature-card-title">Calendar Integration</div>
+        <p class="feature-card-desc">Export accepted meetings directly to Google Calendar or Microsoft Outlook.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-icon">📱</div>
+        <div class="feature-card-title">Mobile Application</div>
+        <p class="feature-card-desc">React Native app for Android and iOS using the same Supabase backend.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-icon">🔑</div>
+        <div class="feature-card-title">Stronger Student Credentials</div>
+        <p class="feature-card-desc">Student accounts are currently provisioned with the Student ID as the initial password for fast classroom onboarding. A forced password change on first login, or university SSO, is the next step — now that private thesis documents are stored, credential strength matters more than convenience.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-icon">🔍</div>
+        <div class="feature-card-title">Plagiarism &amp; Similarity Check</div>
+        <p class="feature-card-desc">Automated similarity scoring on submitted PDFs, surfaced to the reviewing faculty member alongside the document.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-icon">✍️</div>
+        <div class="feature-card-title">In-Browser PDF Annotation</div>
+        <p class="feature-card-desc">Let faculty mark up the PDF itself — highlights and margin comments — instead of writing feedback separately from the document.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-icon">📊</div>
+        <div class="feature-card-title">Submission Analytics</div>
+        <p class="feature-card-desc">Departmental dashboards showing submission volume, approval rates, average revision counts and review turnaround time.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    <span>FacultyTrack · Project Proposal</span>
+    <span>Page 11</span>
+  </div>
+</div>
+
+
+<!-- ══════════════════ PAGE 12 — DEVELOPER ══════════════════ -->
+<div class="page page-break">
+
+  <div class="page-header-strip">
+    <div class="page-header-strip-title">Developer Information</div>
+    <div class="page-header-strip-right">FacultyTrack · 2026</div>
+  </div>
+
+  <div class="section">
+    <div class="section-number">Section 13</div>
+    <div class="section-title">Developer Information</div>
+
+    <div class="dev-card">
+      <div class="dev-avatar">M</div>
+      <div>
+        <div class="dev-info-name">Md. Mehadi Hasan Shawon</div>
+        <div class="dev-info-meta">
+          <div class="dev-chip">ID: 243037</div>
+          <div class="dev-chip">Batch: 33</div>
+          <div class="dev-chip">write.shawon@gmail.com</div>
+          <div class="dev-chip">IIT, Jahangirnagar University</div>
+          <div class="dev-chip">2026</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title-sm" style="margin-top:32px">Project Summary</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field</th><th>Details</th></tr></thead>
+        <tbody>
+          <tr><td>Project Name</td><td>FacultyTrack — Real-Time Faculty Presence &amp; Schedule Management</td></tr>
+          <tr><td>Project Type</td><td>Full-Stack Web Application (Academic Project)</td></tr>
+          <tr><td>Frontend Framework</td><td>React 18 + Vite + Tailwind CSS</td></tr>
+          <tr><td>Backend Platform</td><td>Supabase (PostgreSQL + Auth + Realtime + Storage)</td></tr>
+          <tr><td>Deployment</td><td>Vercel (frontend) · Supabase Cloud (backend)</td></tr>
+          <tr><td>Repository</td><td>github.com/Mehadi-Shawon/iitju</td></tr>
+          <tr><td>Database Tables</td><td>6 (profiles, staff_status, activity_log, schedule_requests, thesis_submissions, notifications)</td></tr>
+          <tr><td>Storage Buckets</td><td>2 (avatars — public · submissions — private, signed-URL access only)</td></tr>
+          <tr><td>User Roles</td><td>Admin, Faculty, Student</td></tr>
+          <tr><td>Year</td><td>2026</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div style="margin-top: 48px; background: linear-gradient(135deg, #EEF2FF, #E0E7FF); border-radius: 14px; padding: 28px 32px; text-align: center;">
+    <div style="font-size: 22pt; font-weight: 900; color: #3730A3; letter-spacing: -0.02em; margin-bottom: 6px;">FacultyTrack</div>
+    <div style="font-size: 9pt; color: #6366F1; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 14px;">Real-Time Faculty Presence &amp; Schedule Management</div>
+    <div style="font-size: 8.5pt; color: #6B7280;">© 2026 Md. Mehadi Hasan Shawon &nbsp;·&nbsp; Institute of Information Technology &nbsp;·&nbsp; Jahangirnagar University</div>
+  </div>
+
+  <div class="doc-footer" style="margin-top: 32px;">
+    <span>FacultyTrack · Project Proposal</span>
+    <span>Page 12</span>
+  </div>
+</div>
+
+</body>
+</html>

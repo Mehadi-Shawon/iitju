@@ -11,6 +11,8 @@ import AdminSettingsPage from '@/pages/admin/AdminSettingsPage'
 import AdminQRScanPage from '@/pages/admin/AdminQRScanPage'
 import ScheduleRequestPage from '@/pages/student/ScheduleRequestPage'
 import FacultySchedulePage from '@/pages/staff/FacultySchedulePage'
+import ThesisSubmitPage from '@/pages/student/ThesisSubmitPage'
+import ThesisReviewPage from '@/pages/staff/ThesisReviewPage'
 
 export default function AppRouter() {
   return (
@@ -75,6 +77,18 @@ export default function AppRouter() {
       <Route path="/app/staff/schedule" element={
         <RequireAuth roles={['staff', 'admin']}>
           <AppLayout><FacultySchedulePage /></AppLayout>
+        </RequireAuth>
+      } />
+
+      <Route path="/app/student/submissions" element={
+        <RequireAuth roles={['student']}>
+          <AppLayout><ThesisSubmitPage /></AppLayout>
+        </RequireAuth>
+      } />
+
+      <Route path="/app/staff/submissions" element={
+        <RequireAuth roles={['staff', 'admin']}>
+          <AppLayout><ThesisReviewPage /></AppLayout>
         </RequireAuth>
       } />
 

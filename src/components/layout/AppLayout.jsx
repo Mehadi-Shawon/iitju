@@ -13,6 +13,7 @@ const NAV = {
     { to: '/app/dashboard', icon: 'dashboard', label: 'Dashboard' },
     { to: '/app/admin/users', icon: 'group', label: 'Users' },
     { to: '/app/admin/qrscan', icon: 'qr_code_scanner', label: 'QR Scanner' },
+    { to: '/app/staff/submissions', icon: 'assignment', label: 'Submissions' },
     { to: '/app/admin/activity', icon: 'history', label: 'Activity Log' },
     { to: '/app/admin/settings', icon: 'settings', label: 'Settings' },
     { to: '/app/staff/profile', icon: 'account_circle', label: 'My Profile' },
@@ -22,12 +23,22 @@ const NAV = {
     { to: '/app/staff/profile', icon: 'account_circle', label: 'My Profile' },
     { to: '/app/staff/checkin', icon: 'qr_code_scanner', label: 'QR Check-In' },
     { to: '/app/staff/schedule', icon: 'calendar_month', label: 'Schedule Requests', badgeKey: 'staffSchedule' },
+    { to: '/app/staff/submissions', icon: 'assignment', label: 'Submissions', badgeKey: 'staffSubmissions' },
   ],
   student: [
     { to: '/app/dashboard', icon: 'dashboard', label: 'Faculty Directory' },
     { to: '/app/student/schedule', icon: 'calendar_add_on', label: 'Request Schedule', badgeKey: 'studentSchedule' },
+    { to: '/app/student/submissions', icon: 'upload_file', label: 'My Submissions', badgeKey: 'studentSubmissions' },
   ],
 }
+
+// Notification types that belong to the thesis/project submission flow
+const SUBMISSION_NOTIFS = [
+  'submission_new',
+  'submission_under_review',
+  'submission_approved',
+  'submission_rejected',
+]
 
 export default function AppLayout({ children }) {
   const { profile, role, signOut } = useAuth()
@@ -59,9 +70,17 @@ export default function AppLayout({ children }) {
   const badges = {
     staffSchedule: notifications.filter(n => n.type === 'schedule_request' && !n.read).length,
     studentSchedule: notifications.filter(n => (n.type === 'schedule_accepted' || n.type === 'schedule_declined') && !n.read).length,
+    staffSubmissions: notifications.filter(n => n.type === 'submission_new' && !n.read).length,
+    studentSubmissions: notifications.filter(n => SUBMISSION_NOTIFS.includes(n.type) && n.type !== 'submission_new' && !n.read).length,
   }
 
-  const schedulePage = role === 'student' ? '/app/student/schedule' : '/app/staff/schedule'
+  // Send each notification to the page that owns it
+  function pageForNotif(type) {
+    if (SUBMISSION_NOTIFS.includes(type)) {
+      return role === 'student' ? '/app/student/submissions' : '/app/staff/submissions'
+    }
+    return role === 'student' ? '/app/student/schedule' : '/app/staff/schedule'
+  }
 
   return (
     <div className="flex min-h-screen">
@@ -221,7 +240,7 @@ export default function AppLayout({ children }) {
                         onNavigate={() => {
                           markAsRead(n.id)
                           setNotifOpen(false)
-                          navigate(schedulePage)
+                          navigate(pageForNotif(n.type))
                         }}
                       />
                     ))}
@@ -250,6 +269,11 @@ const NOTIF_ICON = {
   schedule_accepted:  { icon: 'event_available',   cls: 'text-green-600 bg-green-50' },
   schedule_declined:  { icon: 'event_busy',        cls: 'text-red-500 bg-red-50' },
   schedule_cancelled: { icon: 'event_busy',        cls: 'text-gray-500 bg-gray-100' },
+
+  submission_new:          { icon: 'assignment',  cls: 'text-primary bg-primary-light' },
+  submission_under_review: { icon: 'rate_review', cls: 'text-amber-600 bg-amber-50' },
+  submission_approved:     { icon: 'verified',    cls: 'text-green-600 bg-green-50' },
+  submission_rejected:     { icon: 'block',       cls: 'text-red-500 bg-red-50' },
 }
 
 function NotifItem({ notif, onNavigate }) {
