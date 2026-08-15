@@ -4,6 +4,7 @@ import AppLayout from '@/components/layout/AppLayout'
 import LoginPage from '@/pages/LoginPage'
 import DashboardPage from '@/pages/DashboardPage'
 import StaffProfilePage from '@/pages/staff/StaffProfilePage'
+import StatusUpdatePage from '@/pages/staff/StatusUpdatePage'
 import QRCheckInPage from '@/pages/staff/QRCheckInPage'
 import AdminUsersPage from '@/pages/admin/AdminUsersPage'
 import AdminActivityPage from '@/pages/admin/AdminActivityPage'
@@ -35,6 +36,12 @@ export default function AppRouter() {
       <Route path="/app/staff/profile" element={
         <RequireAuth roles={['staff', 'admin']}>
           <AppLayout><StaffProfilePage /></AppLayout>
+        </RequireAuth>
+      } />
+
+      <Route path="/app/staff/status" element={
+        <RequireAuth roles={['staff', 'admin']}>
+          <AppLayout><StatusUpdatePage /></AppLayout>
         </RequireAuth>
       } />
 

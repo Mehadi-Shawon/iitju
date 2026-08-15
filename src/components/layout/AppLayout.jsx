@@ -11,6 +11,7 @@ import juLogo from '@/assets/Jahangirnagar_University_Logo.svg.png'
 const NAV = {
   admin: [
     { to: '/app/dashboard', icon: 'dashboard', label: 'Dashboard' },
+    { to: '/app/staff/status', icon: 'update', label: 'Update Status' },
     { to: '/app/admin/users', icon: 'group', label: 'Users' },
     { to: '/app/admin/qrscan', icon: 'qr_code_scanner', label: 'QR Scanner' },
     { to: '/app/staff/submissions', icon: 'assignment', label: 'Submissions' },
@@ -18,12 +19,15 @@ const NAV = {
     { to: '/app/admin/settings', icon: 'settings', label: 'Settings' },
     { to: '/app/staff/profile', icon: 'account_circle', label: 'My Profile' },
   ],
+  // Daily actions first, then the occasional tools, with QR Check-In and
+  // My Profile last
   staff: [
     { to: '/app/dashboard', icon: 'dashboard', label: 'Dashboard' },
-    { to: '/app/staff/profile', icon: 'account_circle', label: 'My Profile' },
-    { to: '/app/staff/checkin', icon: 'qr_code_scanner', label: 'QR Check-In' },
+    { to: '/app/staff/status', icon: 'update', label: 'Update Status' },
     { to: '/app/staff/schedule', icon: 'calendar_month', label: 'Schedule Requests', badgeKey: 'staffSchedule' },
     { to: '/app/staff/submissions', icon: 'assignment', label: 'Submissions', badgeKey: 'staffSubmissions' },
+    { to: '/app/staff/checkin', icon: 'qr_code_scanner', label: 'QR Check-In' },
+    { to: '/app/staff/profile', icon: 'account_circle', label: 'My Profile' },
   ],
   student: [
     { to: '/app/dashboard', icon: 'dashboard', label: 'Faculty Directory' },
