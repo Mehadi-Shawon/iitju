@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams, NavLink } from 'react-router-dom'
 import { useMyStatus } from '@/hooks/useData'
 import { PageHeader, StatusBadge, LoadingPage, Spinner } from '@/components/ui'
@@ -19,18 +19,97 @@ const STATUS_LABELS = {
   offline: 'Offline',
 }
 
+/**
+ * Pull a check-in out of whatever the camera decoded.
+ *
+ * A location QR holds a full URL back into this app. It may have been generated
+ * on a different origin (a preview deploy, or before a domain change), so the
+ * host is deliberately not checked — only the two params matter, and `st` is
+ * validated against the known statuses so an edited code cannot inject one the
+ * database would reject.
+ */
+function parseScan(text) {
+  let params
+  try {
+    params = new URL(text).searchParams
+  } catch {
+    // Not a URL — accept a bare query string too, e.g. "loc=Lab%202&st=in-lab"
+    if (!text.includes('loc=')) return null
+    params = new URLSearchParams(text.replace(/^\?/, ''))
+  }
+
+  const location = (params.get('loc') ?? '').trim().slice(0, 80)
+  if (!location) return null
+
+  const requested = params.get('st') ?? ''
+  return {
+    location,
+    status: STATUS_VALUES.includes(requested) ? requested : 'available',
+  }
+}
+
 export default function QRCheckInPage() {
   const [params] = useSearchParams()
   const { status, loading, checkInViaQR } = useMyStatus()
+
+  // Seeded from the URL when the phone's own camera opened the link; also set
+  // by the in-app scanner below. Either way it ends at the same confirm card.
+  const [pending, setPending] = useState(() => {
+    const location = (params.get('loc') ?? '').trim().slice(0, 80)
+    if (!location) return null
+    const requested = params.get('st') ?? ''
+    return { location, status: STATUS_VALUES.includes(requested) ? requested : 'available' }
+  })
+
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(null)
+  const [scanning, setScanning] = useState(false)
+  const scannerRef = useRef(null)
+  const handledRef = useRef(false)
 
-  // Written into the QR by the admin generator. Anything not in STATUS_VALUES is
-  // ignored rather than trusted — the URL is user-editable.
-  const scannedLocation = (params.get('loc') ?? '').trim().slice(0, 80)
-  const requested = params.get('st') ?? ''
-  const scannedStatus = STATUS_VALUES.includes(requested) ? requested : 'available'
-  const hasScan = scannedLocation.length > 0
+  const stopScanner = useCallback(async () => {
+    const s = scannerRef.current
+    scannerRef.current = null
+    if (s) { try { await s.stop() } catch { /* already stopped */ } }
+    setScanning(false)
+  }, [])
+
+  // Never leave the camera running behind us
+  useEffect(() => () => { stopScanner() }, [stopScanner])
+
+  async function startScanner() {
+    if (scanning) return
+    handledRef.current = false
+    setDone(null)
+    try {
+      const { Html5Qrcode } = await import('html5-qrcode')
+      setScanning(true)
+      const scanner = new Html5Qrcode('faculty-qr-reader')
+      scannerRef.current = scanner
+      await scanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: 240 },
+        async decoded => {
+          // The callback fires at the scan rate while a code is in frame, so
+          // stop before doing anything — otherwise one code spews toasts.
+          if (handledRef.current) return
+          handledRef.current = true
+          await stopScanner()
+
+          const scan = parseScan(decoded)
+          if (!scan) {
+            handledRef.current = false
+            return toast.error('That is not a FacultyTrack location code')
+          }
+          setPending(scan)
+        },
+        () => {}   // per-frame decode misses are normal; ignore
+      )
+    } catch {
+      setScanning(false)
+      toast.error('Could not open the camera. Check permission, or use your phone camera on the printed code.')
+    }
+  }
 
   async function handleCheckIn(location, statusValue) {
     setSaving(true)
@@ -38,6 +117,7 @@ export default function QRCheckInPage() {
     setSaving(false)
     if (error) return toast.error('Check-in failed: ' + error.message)
     setDone({ location, status: statusValue })
+    setPending(null)
     toast.success(location ? `Checked in at ${location}` : 'Checked in')
   }
 
@@ -47,39 +127,33 @@ export default function QRCheckInPage() {
     <div className="max-w-lg mx-auto">
       <PageHeader
         title="Check In"
-        subtitle={hasScan ? 'Confirm your check-in' : 'Scan the QR code posted in any room'}
+        subtitle={pending ? 'Confirm your check-in' : 'Scan the QR code posted in any room'}
       />
 
-      {/* ── A room QR was scanned ── */}
-      {hasScan && !done && (
+      {/* ── Confirm a scanned room ── */}
+      {pending && !done && (
         <div className="card p-6 text-center mb-4">
           <div className="w-14 h-14 rounded-full bg-primary-light flex items-center justify-center mx-auto mb-4">
             <span className="material-symbols-outlined text-primary" style={{ fontSize: 28 }}>qr_code_scanner</span>
           </div>
-          <div className="text-[10px] font-bold text-text-faint uppercase tracking-widest mb-2">
-            You scanned
-          </div>
-          <h2 className="text-2xl font-extrabold text-text tracking-tight leading-tight">
-            {scannedLocation}
-          </h2>
+          <div className="text-[10px] font-bold text-text-faint uppercase tracking-widest mb-2">You scanned</div>
+          <h2 className="text-2xl font-extrabold text-text tracking-tight leading-tight">{pending.location}</h2>
           <p className="text-sm text-text-muted mt-3">
             This will set your status to{' '}
-            <strong className="text-text">{STATUS_LABELS[scannedStatus] ?? scannedStatus}</strong>
-            {' '}and your location to <strong className="text-text">{scannedLocation}</strong>.
+            <strong className="text-text">{STATUS_LABELS[pending.status] ?? pending.status}</strong>.
           </p>
           <button
-            onClick={() => handleCheckIn(scannedLocation, scannedStatus)}
+            onClick={() => handleCheckIn(pending.location, pending.status)}
             className="btn-primary w-full mt-6"
             disabled={saving}
           >
-            {saving
-              ? <Spinner size={16} />
-              : <span className="material-symbols-outlined" style={{ fontSize: 17 }}>login</span>}
+            {saving ? <Spinner size={16} />
+                    : <span className="material-symbols-outlined" style={{ fontSize: 17 }}>login</span>}
             Check in here
           </button>
-          <NavLink to="/app/staff/status" className="block text-xs text-text-faint hover:text-primary mt-3.5">
-            Not right? Set your status manually instead
-          </NavLink>
+          <button onClick={() => setPending(null)} className="text-xs text-text-faint hover:text-text mt-3.5">
+            Cancel
+          </button>
         </div>
       )}
 
@@ -95,53 +169,63 @@ export default function QRCheckInPage() {
           <p className="text-sm text-green-800 mt-1.5">
             Students now see you as {STATUS_LABELS[done.status] ?? done.status}.
           </p>
-          <NavLink to="/app/dashboard" className="btn-secondary w-full mt-5">
-            Back to Dashboard
-          </NavLink>
+          <div className="flex gap-2.5 mt-5">
+            <button onClick={startScanner} className="btn-secondary flex-1">
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>qr_code_scanner</span>
+              Scan Another
+            </button>
+            <NavLink to="/app/dashboard" className="btn-secondary flex-1">Dashboard</NavLink>
+          </div>
         </div>
       )}
 
-      {/* ── No scan: explain how it works ── */}
-      {!hasScan && !done && (
-        <div className="card p-6 mb-4">
-          <div className="flex flex-col items-center text-center">
-            <div className="w-14 h-14 rounded-full bg-primary-light flex items-center justify-center mb-4">
-              <span className="material-symbols-outlined text-primary" style={{ fontSize: 28 }}>qr_code_2</span>
+      {/* ── Scanner ── */}
+      {!pending && !done && (
+        <div className="card p-5 sm:p-6 mb-4">
+          <div
+            id="faculty-qr-reader"
+            className={`w-full rounded-[10px] overflow-hidden bg-black mb-4 ${scanning ? 'block' : 'hidden'}`}
+            style={{ minHeight: 260 }}
+          />
+
+          {!scanning && (
+            <div className="flex flex-col items-center text-center mb-5">
+              <div className="w-14 h-14 rounded-full bg-primary-light flex items-center justify-center mb-4">
+                <span className="material-symbols-outlined text-primary" style={{ fontSize: 28 }}>qr_code_2</span>
+              </div>
+              <div className="text-base font-bold text-text mb-1">Scan a room's QR code</div>
+              <p className="text-sm text-text-muted leading-relaxed max-w-xs">
+                Every classroom, lab and office has a printed FacultyTrack code.
+                Scan it here, or point your phone camera at it directly.
+              </p>
             </div>
-            <div className="text-base font-bold text-text mb-1">Scan a room's QR code</div>
-            <p className="text-sm text-text-muted leading-relaxed max-w-xs">
-              Every classroom, lab and office has a printed FacultyTrack code. Point
-              your phone camera at it and confirm once — your status and location
-              update together.
-            </p>
-          </div>
+          )}
 
-          <ol className="mt-6 space-y-3">
-            {[
-              'Open your phone camera and point it at the code on the wall',
-              'Tap the link that appears',
-              'Confirm — you are checked in',
-            ].map((step, i) => (
-              <li key={i} className="flex items-start gap-3">
-                <span className="w-6 h-6 rounded-full bg-primary-light text-primary text-xs font-bold flex items-center justify-center shrink-0">
-                  {i + 1}
-                </span>
-                <span className="text-sm text-text-muted leading-relaxed">{step}</span>
-              </li>
-            ))}
-          </ol>
+          {scanning ? (
+            <button onClick={stopScanner} className="btn-danger w-full">
+              <span className="material-symbols-outlined" style={{ fontSize: 17 }}>stop</span>
+              Stop Camera
+            </button>
+          ) : (
+            <button onClick={startScanner} className="btn-primary w-full">
+              <span className="material-symbols-outlined" style={{ fontSize: 17 }}>photo_camera</span>
+              Scan with Camera
+            </button>
+          )}
+          <p className="text-[11px] text-text-faint mt-2.5 text-center">
+            Requires camera permission. The site must be served over HTTPS.
+          </p>
 
-          <div className="mt-6 pt-5 border-t border-border-light">
-            <p className="text-xs text-text-faint mb-3">
-              No code to hand? Check in without a room, or set your status yourself.
-            </p>
+          <div className="mt-5 pt-5 border-t border-border-light">
+            <p className="text-xs text-text-faint mb-3">No code to hand?</p>
             <div className="flex flex-col sm:flex-row gap-2.5">
               <button
                 onClick={() => handleCheckIn('', 'available')}
                 className="btn-secondary flex-1"
                 disabled={saving}
               >
-                {saving ? <Spinner size={14} /> : <span className="material-symbols-outlined" style={{ fontSize: 16 }}>login</span>}
+                {saving ? <Spinner size={14} />
+                        : <span className="material-symbols-outlined" style={{ fontSize: 16 }}>login</span>}
                 Check in on campus
               </button>
               <NavLink to="/app/staff/status" className="btn-secondary flex-1">
