@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { Spinner } from '@/components/ui'
 
@@ -12,10 +12,15 @@ function LoadingScreen() {
 
 export function RequireAuth({ children, roles }) {
   const { session, profile, loading } = useAuth()
+  const location = useLocation()
 
   // loading now covers both session check + profile fetch
   if (loading) return <LoadingScreen />
-  if (!session) return <Navigate to="/login" replace />
+  // Carry the intended destination through login, so scanning a location QR
+  // while signed out still lands on that location's check-in after signing in
+  if (!session) {
+    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />
+  }
 
   if (roles) {
     // loading is false here, so profile fetch is done.

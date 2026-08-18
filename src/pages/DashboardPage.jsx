@@ -18,8 +18,6 @@ const FILTERS = [
   { id: 'offline',    label: 'Offline' },
 ]
 
-const ABSENT_STATUSES = ['offline', 'off-campus', 'on-leave']
-
 export default function DashboardPage() {
   const { role } = useAuth()
   const { staff, loading } = useStaffList()
@@ -46,8 +44,8 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-7">
         <StatCard label="On Campus" value={`${stats.onCampusPct}%`} sub={`${stats.onCampus} of ${stats.total} present`} accent />
         <StatCard label="Available" value={stats.available} sub="Ready to meet" />
-        <StatCard label="In Meeting" value={stats.meeting} sub="Occupied now" />
-        <StatCard label="Away / Offline" value={stats.away + stats.offline} sub="Unavailable" />
+        <StatCard label="Occupied" value={stats.occupied} sub="Here, not free" />
+        <StatCard label="Not on Campus" value={stats.absent} sub="Unavailable" />
       </div>
 
       {/* Search + filters */}

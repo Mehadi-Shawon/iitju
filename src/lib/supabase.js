@@ -53,7 +53,12 @@ export const anonClient = createClient(
   CREATE TABLE public.staff_status (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     staff_id     UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    status       TEXT NOT NULL CHECK (status IN ('available','meeting','away','offline'))
+    -- All ten values the UI offers. If your database was created before
+    -- 2026-08-15 it has the original four-value constraint; apply
+    -- supabase/migrations/20260815_widen_staff_status_check.sql to widen it.
+    status       TEXT NOT NULL CHECK (status IN
+                   ('available','in-class','in-lab','meeting','busy',
+                    'on-break','away','off-campus','on-leave','offline'))
                  DEFAULT 'offline',
     location     TEXT DEFAULT '',
     note         TEXT DEFAULT '',

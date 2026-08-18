@@ -1,9 +1,8 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { useMyStatus, useActivityLog } from '@/hooks/useData'
 import { StatusBadge, Avatar, PageHeader, LoadingPage, Spinner } from '@/components/ui'
-import { QRCodeSVG } from 'qrcode.react'
 import { formatDistanceToNow, format } from 'date-fns'
 import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
@@ -35,13 +34,6 @@ export default function StaffProfilePage() {
       setDetails({ full_name: profile.full_name ?? '', honorific: profile.honorific ?? '' })
     }
   }, [profile?.full_name, profile?.honorific])
-
-  // Memoised: this used to be built in the render body with ts: Date.now(), so
-  // the QR silently regenerated on every keystroke and was never a stable code.
-  const qrPayload = useMemo(
-    () => JSON.stringify({ staffId: profile?.id, name: profile?.full_name, ts: Date.now() }),
-    [profile?.id, profile?.full_name]
-  )
 
   const detailsDirty =
     details.full_name !== (profile?.full_name ?? '') ||
@@ -119,7 +111,7 @@ export default function StaffProfilePage() {
 
   return (
     <div>
-      <PageHeader title="My Profile" subtitle="Your identity, check-in code and account settings" />
+      <PageHeader title="My Profile" subtitle="Your identity and account settings" />
 
       {/* ── Identity ── */}
       <div className="card p-4 sm:p-6 mb-4 sm:mb-5">
@@ -268,20 +260,18 @@ export default function StaffProfilePage() {
 
         {/* ── Right column ── */}
         <div className="space-y-4 sm:space-y-5">
-          {/* QR is a primary faculty feature — no longer hidden behind a toggle */}
+          {/* How to check in — the personal QR flow was replaced by printed
+              room codes, so this explains the new one instead */}
           <section className="card p-4 sm:p-5">
-            <SectionHeading icon="qr_code_2" title="Check-In QR" />
-            <div className="flex flex-col items-center">
-              <div className="p-3 bg-white border border-border-light rounded-lg">
-                <QRCodeSVG value={qrPayload} size={148} level="H" includeMargin />
-              </div>
-              <p className="text-xs text-text-faint leading-relaxed text-center mt-3.5">
-                Show this at any campus QR terminal to check in.
-              </p>
-              <div className="w-full mt-3 text-[11px] font-mono text-text-faint bg-surface-low rounded-lg px-3 py-2 text-center break-all">
-                {profile?.id?.slice(0, 18)}…
-              </div>
-            </div>
+            <SectionHeading icon="qr_code_scanner" title="Checking In" />
+            <p className="text-sm text-text-muted leading-relaxed">
+              Scan the FacultyTrack code posted in any classroom, lab or office.
+              Your status and location update together, in one tap.
+            </p>
+            <NavLink to="/app/staff/checkin" className="btn-secondary w-full mt-4">
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>qr_code_scanner</span>
+              How it works
+            </NavLink>
           </section>
 
           {/* Security */}

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useStaffList, useScheduleRequests } from '@/hooks/useData'
+import { useState, useEffect } from 'react'
+import { useStaffList, useScheduleRequests, useNotifications } from '@/hooks/useData'
 import { Avatar, StatusBadge, PageHeader, LoadingPage, EmptyState } from '@/components/ui'
 import { format, formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
@@ -23,6 +23,12 @@ const TODAY = new Date().toISOString().split('T')[0]
 export default function ScheduleRequestPage() {
   const { staff, loading: staffLoading } = useStaffList()
   const { requests, loading: reqLoading, submitRequest, cancelRequest } = useScheduleRequests()
+  const { markReadByType } = useNotifications()
+
+  useEffect(() => {
+    markReadByType(['schedule_accepted', 'schedule_declined'])
+  }, [markReadByType])
+
   const [tab, setTab] = useState('new')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)

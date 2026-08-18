@@ -1,0 +1,13 @@
+# Normalise line endings so an editor switching to CRLF does not show every
+# file as fully rewritten in git diff.
+* text=auto eol=lf
+
+# Binary assets must never be touched
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.webp binary
+*.avif binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary

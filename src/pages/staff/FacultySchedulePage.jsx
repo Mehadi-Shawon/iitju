@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useScheduleRequests } from '@/hooks/useData'
+import { useState, useEffect } from 'react'
+import { useScheduleRequests, useNotifications } from '@/hooks/useData'
 import { Avatar, PageHeader, LoadingPage, EmptyState } from '@/components/ui'
 import { format, formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
@@ -13,6 +13,12 @@ const STATUS_CONFIG = {
 
 export default function FacultySchedulePage() {
   const { requests, loading, respondToRequest } = useScheduleRequests()
+  const { markReadByType } = useNotifications()
+
+  // Viewing the page counts as seeing them; previously the badge only cleared
+  // by clicking the item in the bell dropdown.
+  useEffect(() => { markReadByType(['schedule_request', 'schedule_cancelled']) }, [markReadByType])
+
   const [tab, setTab] = useState('pending')
   const [declineTarget, setDeclineTarget] = useState(null) // request id
   const [declineNote, setDeclineNote] = useState('')

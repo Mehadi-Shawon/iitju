@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { Spinner } from '@/components/ui'
 import toast from 'react-hot-toast'
@@ -9,6 +9,9 @@ import juBg from '@/assets/JU NEW BG.png'
 export default function LoginPage() {
   const { signIn, signInWithStudentId } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  // Set by RequireAuth when a protected URL was opened while signed out
+  const redirectTo = location.state?.from || '/app/dashboard'
 
   const [tab, setTab] = useState('staff')
   const [email, setEmail] = useState('')
@@ -22,7 +25,7 @@ export default function LoginPage() {
     const { error } = await signIn({ email, password })
     setLoading(false)
     if (error) return toast.error(error.message)
-    navigate('/app/dashboard')
+    navigate(redirectTo)
   }
 
   async function handleStudentLogin(e) {
@@ -31,7 +34,7 @@ export default function LoginPage() {
     const { error } = await signInWithStudentId(studentId)
     setLoading(false)
     if (error) return toast.error('Invalid Student ID. Contact admin.')
-    navigate('/app/dashboard')
+    navigate(redirectTo)
   }
 
   return (

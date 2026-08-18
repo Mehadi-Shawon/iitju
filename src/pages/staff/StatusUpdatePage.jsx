@@ -44,12 +44,18 @@ export default function StatusUpdatePage() {
   const live = status?.status ?? 'offline'
   const liveMeta = meta(live)
   const pickedMeta = meta(form.status)
-  const statusChanged = !!status && form.status !== live
+
+  // A user with no staff_status row yet — every admin, and anyone promoted from
+  // student to faculty — has status === null. Gating `dirty` on `!!status` left
+  // their save button permanently disabled and labelled "Saved", so the row
+  // could never be created. Treat "no row" as always dirty.
+  const hasRow = !!status
+  const statusChanged = hasRow && form.status !== live
   const dirty =
-    !!status &&
-    (statusChanged ||
-      form.location !== (status.location ?? '') ||
-      form.note !== (status.note ?? ''))
+    !hasRow ||
+    statusChanged ||
+    form.location !== (status.location ?? '') ||
+    form.note !== (status.note ?? '')
 
   async function handleSubmit(e) {
     e.preventDefault()

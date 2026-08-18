@@ -73,3 +73,28 @@
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #c7c4d7; border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: #9997b0; }
+
+/* ── Print: only the QR sheet should reach the printer ───────────── */
+@media print {
+  .no-print { display: none !important; }
+
+  html, body {
+    background: #fff !important;
+  }
+
+  /* AppLayout offsets the content for a sidebar that is not printed */
+  body * { box-shadow: none !important; }
+  main { padding: 0 !important; max-width: none !important; }
+  .lg\:ml-60 { margin-left: 0 !important; }
+
+  /* The generated sheet fills the page and never splits across two */
+  .print-sheet {
+    border: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    padding: 0 !important;
+  }
+
+  /* Grid collapses so the sheet is not squeezed into a half-width column */
+  .grid { display: block !important; }
+}

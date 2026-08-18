@@ -1,6 +1,8 @@
-# StaffTrack — QR Staff Availability System
+# FacultyTrack — Faculty Presence & Academic Workflow System
 
-A complete React + Supabase web app for tracking staff availability and location via QR check-in.
+A React + Supabase web app for Institute of Information Technology, Jahangirnagar University.
+Tracks live faculty availability via QR check-in, and handles student meeting requests and
+thesis/project submission review.
 
 ## Features by Role
 
@@ -9,16 +11,18 @@ A complete React + Supabase web app for tracking staff availability and location
 - Create student accounts (student ID login)
 - View all users, edit roles, delete accounts
 - Override any staff status and location
+- **Location QR generator** — create a printable QR for any classroom, lab or office; faculty scan it to check in
 - Full activity log (realtime)
 - Review any student submission (oversight)
 - System settings
 
 ### 👤 Staff
 - Login with email + password
-- Update own availability (Available / In Meeting / Away / Offline)
-- Set location and status note
-- View personal QR code (for terminal scanning)
-- Scan station QR codes with camera
+- Update own availability from a dedicated **Update Status** page — ten states
+  (Available, In Class, In Lab, In Meeting, Busy, On Break, Away, Off Campus,
+  On Leave, Offline) as one-tap tiles
+- Set location and status note; signing out automatically sets you Offline
+- Check in by scanning the printed QR posted in a room — one tap sets both status and location
 - View own activity log
 - Respond to student schedule requests
 - Review submitted thesis / project PDFs — approve, deny, or edit the details and approve in one action
@@ -44,7 +48,7 @@ npm install
 
 ### 2. Set up Supabase
 1. Create a free project at [supabase.com](https://supabase.com)
-2. Go to **SQL Editor** and run the full schema SQL from `src/lib/supabase.js` (it's in the comments at the bottom of the file). It creates the tables, the RLS policies, and the private `submissions` storage bucket.
+2. Go to **SQL Editor** and run the full schema SQL from `src/lib/supabase.js` (it's in the comments at the bottom of the file). It creates the tables, the RLS policies, and the private `submissions` storage bucket. Then apply the files in `supabase/migrations/` — see [Migrations](#migrations) below.
 3. Enable **Realtime** for `staff_status`, `activity_log`, `schedule_requests`, `thesis_submissions` and `notifications` in the Supabase dashboard (the schema SQL also does this via `ALTER PUBLICATION`)
 4. Create a public `avatars` bucket for profile photos (Storage → New bucket → public)
 
@@ -83,12 +87,14 @@ src/
 ├── hooks/
 │   └── useData.js        # All Supabase queries + realtime hooks
 ├── lib/
-│   └── supabase.js       # Client + full DB schema (SQL in comments)
+│   ├── supabase.js       # Client + full DB schema (SQL in comments)
+│   └── staffStatus.js    # Status values + the verified staff_status writer
 ├── pages/
 │   ├── LoginPage.jsx
 │   ├── DashboardPage.jsx  (all roles)
 │   ├── staff/
 │   │   ├── StaffProfilePage.jsx
+│   │   ├── StatusUpdatePage.jsx     # the ten-state status picker
 │   │   ├── QRCheckInPage.jsx
 │   │   ├── FacultySchedulePage.jsx
 │   │   └── ThesisReviewPage.jsx    # review student submissions
@@ -98,7 +104,7 @@ src/
 │   └── admin/
 │       ├── AdminUsersPage.jsx
 │       ├── AdminActivityPage.jsx
-│       ├── AdminQRScanPage.jsx
+│       ├── AdminLocationQRPage.jsx  # generate + print room QR codes
 │       └── AdminSettingsPage.jsx
 ├── App.jsx
 ├── AppRouter.jsx
@@ -159,6 +165,30 @@ Row-Level Security enforces the rules in the database, not just the UI:
 
 ---
 
+## Migrations
+
+`supabase/migrations/` holds the SQL to apply to an existing database, in this
+order. Each file is idempotent and ends with a verification query whose output
+should read `OK`.
+
+| File | What it does | Required? |
+|------|--------------|-----------|
+| `20260814_thesis_submissions.sql` | Creates `thesis_submissions`, the private `submissions` bucket and their policies. Purely additive. | Yes — the submission pages need it |
+| `20260814b_fix_policy_recursion.sql` | Moves policy lookups into `SECURITY DEFINER` helpers. Without it, reading `thesis_submissions` raises `42P17: infinite recursion`. | Yes |
+| `20260815_widen_staff_status_check.sql` | Widens the `staff_status.status` CHECK from 4 values to all 10, and sets `REPLICA IDENTITY FULL`. Without it, six statuses fail to save. | Yes |
+| `20260814_fix_profile_role_escalation.sql` | Stops any signed-in user rewriting their own `profiles.role` to `admin`. | Strongly recommended |
+
+`supabase/backup_snapshot.sql` is a read-only snapshot query for taking a manual
+backup before applying any of the above.
+
+### Known limitation
+
+Student accounts are provisioned with the Student ID as the initial password for
+fast classroom onboarding. A forced password change on first login, or
+university SSO, is the intended next step — see Future Scope in the proposal.
+
+---
+
 ## Tech Stack
 
 - **React 18** + **Vite**
@@ -169,6 +199,34 @@ Row-Level Security enforces the rules in the database, not just the UI:
 - **html5-qrcode** — QR code scanning via camera
 - **date-fns** — date formatting
 - **react-hot-toast** — notifications
+
+---
+
+## Check-In by Location QR
+
+An admin generates a QR for a room on **Location QR**, prints it, and posts it
+inside. Each code encodes a link back into the app:
+
+```
+https://<your-app>/app/staff/checkin?loc=Class%20Room%20310&st=in-class
+```
+
+A lecturer points their phone camera at it, taps the link, confirms once, and
+their status and location update together — a classroom sets **In Class**, a lab
+sets **In Lab**, an office sets **Available**. Because the code holds a link
+rather than data, the phone's native camera opens it; there is no in-app scanner
+to find first. Scanning while signed out returns to that room's check-in after
+login.
+
+Locations are **not stored server-side** — the QR carries everything, so nothing
+needs migrating and a printed sheet keeps working forever. The admin's browser
+remembers recently generated rooms so a code can be reprinted without retyping.
+
+> **This is a convenience, not attendance proof.** A printed code can be
+> photographed and the URL can be edited by hand, so a check-in is a claim of
+> presence rather than evidence of it. That is no weaker than the status picker,
+> which already lets faculty set any status directly. Verified attendance would
+> need per-room rotating tokens — see Future Scope.
 
 ---
 

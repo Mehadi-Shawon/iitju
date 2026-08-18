@@ -4,3 +4,6 @@ dist
 .env.local
 .DS_Store
 *.log
+
+# Written thesis report — drafted alongside the code, not part of the app
+report/

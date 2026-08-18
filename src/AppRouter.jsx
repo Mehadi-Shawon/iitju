@@ -9,7 +9,7 @@ import QRCheckInPage from '@/pages/staff/QRCheckInPage'
 import AdminUsersPage from '@/pages/admin/AdminUsersPage'
 import AdminActivityPage from '@/pages/admin/AdminActivityPage'
 import AdminSettingsPage from '@/pages/admin/AdminSettingsPage'
-import AdminQRScanPage from '@/pages/admin/AdminQRScanPage'
+import AdminLocationQRPage from '@/pages/admin/AdminLocationQRPage'
 import ScheduleRequestPage from '@/pages/student/ScheduleRequestPage'
 import FacultySchedulePage from '@/pages/staff/FacultySchedulePage'
 import ThesisSubmitPage from '@/pages/student/ThesisSubmitPage'
@@ -57,9 +57,9 @@ export default function AppRouter() {
         </RequireAuth>
       } />
 
-      <Route path="/app/admin/qrscan" element={
+      <Route path="/app/admin/locations" element={
         <RequireAuth roles={['admin']}>
-          <AppLayout><AdminQRScanPage /></AppLayout>
+          <AppLayout><AdminLocationQRPage /></AppLayout>
         </RequireAuth>
       } />
 

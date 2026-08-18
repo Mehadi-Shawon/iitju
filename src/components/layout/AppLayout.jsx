@@ -13,7 +13,7 @@ const NAV = {
     { to: '/app/dashboard', icon: 'dashboard', label: 'Dashboard' },
     { to: '/app/staff/status', icon: 'update', label: 'Update Status' },
     { to: '/app/admin/users', icon: 'group', label: 'Users' },
-    { to: '/app/admin/qrscan', icon: 'qr_code_scanner', label: 'QR Scanner' },
+    { to: '/app/admin/locations', icon: 'qr_code_2', label: 'Location QR' },
     { to: '/app/staff/submissions', icon: 'assignment', label: 'Submissions' },
     { to: '/app/admin/activity', icon: 'history', label: 'Activity Log' },
     { to: '/app/admin/settings', icon: 'settings', label: 'Settings' },
@@ -26,7 +26,7 @@ const NAV = {
     { to: '/app/staff/status', icon: 'update', label: 'Update Status' },
     { to: '/app/staff/schedule', icon: 'calendar_month', label: 'Schedule Requests', badgeKey: 'staffSchedule' },
     { to: '/app/staff/submissions', icon: 'assignment', label: 'Submissions', badgeKey: 'staffSubmissions' },
-    { to: '/app/staff/checkin', icon: 'qr_code_scanner', label: 'QR Check-In' },
+    { to: '/app/staff/checkin', icon: 'qr_code_scanner', label: 'Check In' },
     { to: '/app/staff/profile', icon: 'account_circle', label: 'My Profile' },
   ],
   student: [
@@ -89,7 +89,7 @@ export default function AppLayout({ children }) {
   return (
     <div className="flex min-h-screen">
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-40 w-60 bg-white border-r border-border-light flex flex-col transition-transform duration-200
+      <aside className={`no-print fixed inset-y-0 left-0 z-40 w-60 bg-white border-r border-border-light flex flex-col transition-transform duration-200
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
 
         {/* Brand */}
@@ -186,7 +186,7 @@ export default function AppLayout({ children }) {
       {/* Main */}
       <div className="flex-1 lg:ml-60 flex flex-col min-h-screen">
         {/* Topbar */}
-        <header className="sticky top-0 z-20 h-14 bg-white/80 backdrop-blur-md border-b border-border-light flex items-center justify-between px-3 sm:px-6">
+        <header className="no-print sticky top-0 z-20 h-14 bg-white/80 backdrop-blur-md border-b border-border-light flex items-center justify-between px-3 sm:px-6">
           <button className="lg:hidden p-2 rounded-lg hover:bg-surface-low text-text-muted" onClick={() => setSidebarOpen(true)}>
             <span className="material-symbols-outlined">menu</span>
           </button>

@@ -355,14 +355,17 @@ function EditUserModal({ open, onClose, user, onOverride, onRoleChange, onHonori
     if (newPassword && newPassword.length < 6) return toast.error('Password must be at least 6 characters.')
     setSaving(true)
 
-    if (fullName.trim() !== user.full_name) await onNameChange(user.id, fullName.trim())
-    if (user.role !== role) await onRoleChange(user.id, role)
-    if (user.honorific !== honorific) await onHonoricChange(user.id, honorific)
-    if (user.role === 'staff') await onOverride(user.id, status, location)
-    if (newPassword) {
-      const { error } = await onPasswordReset(user.id, newPassword)
-      if (error) { setSaving(false); return toast.error('Password update failed: ' + error.message) }
-    }
+    // Each of these used to have its return value discarded, and the success
+    // toast below fired unconditionally — so an admin whose write was rejected
+    // (by RLS, or by the status CHECK constraint) was told it had worked.
+    const steps = []
+    if (fullName.trim() !== user.full_name) steps.push(['Name', await onNameChange(user.id, fullName.trim())])
+    if (user.role !== role)                 steps.push(['Role', await onRoleChange(user.id, role)])
+    if (user.honorific !== honorific)       steps.push(['Title', await onHonoricChange(user.id, honorific)])
+    // `role` (the new value), not `user.role` — a student promoted to staff in
+    // this same save must get their status written too
+    if (role === 'staff')                   steps.push(['Status', await onOverride(user.id, status, location)])
+    if (newPassword)                        steps.push(['Password', await onPasswordReset(user.id, newPassword)])
 
     // Upload new photo if selected
     if (photo) {
@@ -370,14 +373,24 @@ function EditUserModal({ open, onClose, user, onOverride, onRoleChange, onHonori
       const path = `${user.id}.${ext}`
       const { error: uploadErr } = await supabase.storage
         .from('avatars').upload(path, photo, { upsert: true, contentType: photo.type })
-      if (!uploadErr) {
+      if (uploadErr) {
+        steps.push(['Photo', { error: uploadErr }])
+      } else {
         const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
-        await supabase.from('profiles').update({ avatar_url: `${publicUrl}?t=${Date.now()}` }).eq('id', user.id)
+        steps.push(['Photo', await supabase.from('profiles')
+          .update({ avatar_url: `${publicUrl}?t=${Date.now()}` }).eq('id', user.id)])
       }
     }
 
     setSaving(false)
-    toast.success('User updated')
+
+    const failed = steps.filter(([, res]) => res?.error)
+    if (failed.length) {
+      const [label, res] = failed[0]
+      return toast.error(`${label} failed: ${res.error.message}`)
+    }
+
+    toast.success(steps.length ? 'User updated' : 'No changes to save')
     onClose()
   }
 

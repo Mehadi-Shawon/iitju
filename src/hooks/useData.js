@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase, anonClient } from '@/lib/supabase'
+import { writeStaffStatus, ABSENT_STATUSES } from '@/lib/staffStatus'
 import { useAuth } from '@/context/AuthContext'
 
 // ── Staff list with their status (realtime) ──────────────────
@@ -88,43 +89,49 @@ export function useMyStatus() {
   useEffect(() => { fetchStatus() }, [fetchStatus])
 
   async function updateStatus({ status: newStatus, location, note }) {
-    const { error } = await supabase
-      .from('staff_status')
-      .update({ status: newStatus, location, note, updated_at: new Date().toISOString() })
-      .eq('staff_id', profile.id)
+    // writeStaffStatus verifies the row count and creates the row if missing —
+    // a bare .update() reports success even when it writes nothing
+    const { error } = await writeStaffStatus(profile.id, {
+      status: newStatus,
+      location,
+      note,
+    })
+    if (error) return { error }
 
-    if (!error) {
-      const { error: logError } = await supabase.from('activity_log').insert({
-        staff_id: profile.id,
-        action: 'status_update',
-        detail: `Status set to ${newStatus}${location ? ' · ' + location : ''}`,
-      })
-      if (logError) console.error('activity_log insert failed:', logError)
-      await fetchStatus()
-    }
-    return { error }
+    const { error: logError } = await supabase.from('activity_log').insert({
+      staff_id: profile.id,
+      action: 'status_update',
+      detail: `Status set to ${newStatus}${location ? ' · ' + location : ''}`,
+    })
+    if (logError) console.error('activity_log insert failed:', logError)
+
+    await fetchStatus()
+    return { error: null }
   }
 
-  async function checkInViaQR(locationOverride) {
-    const { error } = await supabase
-      .from('staff_status')
-      .update({
-        status: 'available',
-        location: locationOverride || status?.location || 'QR Check-in',
-        note: 'Checked in via QR',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('staff_id', profile.id)
+  // Called when a faculty member scans the QR posted in a room. The scanned
+  // location decides both where they are and what they are doing, which is the
+  // whole point — one scan replaces the ten-status picker plus a location field.
+  //
+  // Deliberately does NOT fall back to the previous location: a check-in only
+  // tells us someone is present, and republishing yesterday's room with a fresh
+  // timestamp makes a wrong location look freshly confirmed. The note is cleared
+  // for the same reason rather than overwritten with boilerplate.
+  async function checkInViaQR({ location = '', status: newStatus = 'available' } = {}) {
+    const { error } = await writeStaffStatus(profile.id, {
+      status: newStatus,
+      location,
+      note: '',
+    })
+    if (error) return { error }
 
-    if (!error) {
-      await supabase.from('activity_log').insert({
-        staff_id: profile.id,
-        action: 'qr_checkin',
-        detail: `QR check-in at ${locationOverride || 'campus'}`,
-      })
-      await fetchStatus()
-    }
-    return { error }
+    await supabase.from('activity_log').insert({
+      staff_id: profile.id,
+      action: 'qr_checkin',
+      detail: `Checked in via QR${location ? ` at ${location}` : ''} · ${newStatus}`,
+    })
+    await fetchStatus()
+    return { error: null }
   }
 
   return { status, loading, updateStatus, checkInViaQR, refetch: fetchStatus }
@@ -259,8 +266,22 @@ export function useAdminUsers() {
 
   async function updateUserRole(userId, role) {
     const { error } = await supabase.from('profiles').update({ role }).eq('id', userId)
-    if (!error) await fetchUsers()
-    return { error }
+    if (error) return { error }
+
+    // The signup trigger creates a staff_status row only on auth.users INSERT,
+    // so someone promoted to faculty afterwards has none — they would show as
+    // permanently Offline in the directory. writeStaffStatus creates it.
+    if (role === 'staff') {
+      const { error: statusError } = await writeStaffStatus(userId, {
+        status: 'offline',
+        location: '',
+        note: '',
+      })
+      if (statusError) return { error: statusError }
+    }
+
+    await fetchUsers()
+    return { error: null }
   }
 
   async function updateHonorific(userId, honorific) {
@@ -292,10 +313,7 @@ export function useAdminUsers() {
   }
 
   async function overrideStaffStatus(staffId, status, location) {
-    const { error } = await supabase
-      .from('staff_status')
-      .update({ status, location, updated_at: new Date().toISOString() })
-      .eq('staff_id', staffId)
+    const { error } = await writeStaffStatus(staffId, { status, location })
     if (!error) await fetchUsers()
     return { error }
   }
@@ -658,12 +676,20 @@ export function useNotifications() {
 
   const unreadCount = notifications.filter(n => !n.read).length
 
+  // Ids we have already tried to mark read. Without this, a write that affects
+  // zero rows triggers fetchNotifications, which sets a NEW array identity,
+  // which recreates markReadByType, which re-fires the mount effect on the
+  // page — a hot loop hammering the database. One attempt per id per session.
+  const attemptedRef = useRef(new Set())
+
   // Every mark-read path goes through here. .select() is what makes it honest:
   // an RLS-filtered UPDATE that matches no row returns success with zero rows,
   // so without checking the result we would clear the badge locally while the
   // database still says unread — and the dot would reappear on the next mount.
-  async function setRead(ids) {
+  async function setRead(idsIn) {
+    const ids = idsIn.filter(id => !attemptedRef.current.has(id))
     if (!ids.length || !profile?.id) return { error: null }
+    ids.forEach(id => attemptedRef.current.add(id))
 
     const { data, error } = await supabase
       .from('notifications')
@@ -706,18 +732,24 @@ export function useNotifications() {
 }
 
 // ── Dashboard stats ──────────────────────────────────────────
-const ABSENT_STATUSES = ['offline', 'off-campus', 'on-leave']
+// Previously counted only available/meeting/away/offline, so the six other
+// statuses appeared in no tile and the headline numbers did not add up to the
+// department total. These three groups are exhaustive and mutually exclusive:
+// available + occupied + absent === total.
+const OCCUPIED_STATUSES = ['meeting', 'in-class', 'in-lab', 'busy', 'on-break', 'away']
 
 export function useDashboardStats(staff = []) {
-  const onCampus = staff.filter(s => !ABSENT_STATUSES.includes(s.status))
+  const count = pred => staff.filter(pred).length
+  const onCampus = count(s => !ABSENT_STATUSES.includes(s.status))
+
   const stats = {
     total: staff.length,
-    available: staff.filter(s => s.status === 'available').length,
-    meeting: staff.filter(s => s.status === 'meeting').length,
-    away: staff.filter(s => s.status === 'away').length,
-    offline: staff.filter(s => s.status === 'offline').length,
-    onCampus: onCampus.length,
-    onCampusPct: staff.length ? Math.round((onCampus.length / staff.length) * 100) : 0,
+    onCampus,
+    onCampusPct: staff.length ? Math.round((onCampus / staff.length) * 100) : 0,
+
+    available: count(s => s.status === 'available'),
+    occupied: count(s => OCCUPIED_STATUSES.includes(s.status)),
+    absent: count(s => ABSENT_STATUSES.includes(s.status)),
   }
 
   return { stats }
