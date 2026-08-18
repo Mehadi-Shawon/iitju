@@ -261,6 +261,38 @@ export const anonClient = createClient(
       )
     );
 
+  -- 4f. locations table (QR check-in points)
+  --
+  -- A printed room code encodes this row's id, not its name, so renaming a
+  -- room or changing the status it sets takes effect on sheets already posted.
+  -- Created by supabase/migrations/20260818_locations.sql.
+  CREATE TABLE public.locations (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        TEXT NOT NULL,
+    kind        TEXT NOT NULL DEFAULT 'classroom'
+                CHECK (kind IN ('classroom','lab','office','meeting','library','other')),
+    status      TEXT NOT NULL DEFAULT 'available'
+                CHECK (status IN ('available','in-class','in-lab','meeting','busy','on-break','away')),
+    active      BOOLEAN NOT NULL DEFAULT TRUE,
+    created_by  UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    created_at  TIMESTAMPTZ DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  CREATE UNIQUE INDEX locations_name_unique ON public.locations (lower(name));
+
+  ALTER TABLE public.locations ENABLE ROW LEVEL SECURITY;
+
+  -- Anyone signed in may resolve a scanned code; only admins may manage rooms
+  CREATE POLICY "locations_select" ON public.locations FOR SELECT TO authenticated USING (true);
+  CREATE POLICY "locations_insert" ON public.locations FOR INSERT TO authenticated
+    WITH CHECK (public.has_role(auth.uid(), 'admin'));
+  CREATE POLICY "locations_update" ON public.locations FOR UPDATE TO authenticated
+    USING (public.has_role(auth.uid(), 'admin'))
+    WITH CHECK (public.has_role(auth.uid(), 'admin'));
+  CREATE POLICY "locations_delete" ON public.locations FOR DELETE TO authenticated
+    USING (public.has_role(auth.uid(), 'admin'));
+
   -- 5. Enable Realtime on staff_status
   ALTER PUBLICATION supabase_realtime ADD TABLE public.staff_status;
   ALTER PUBLICATION supabase_realtime ADD TABLE public.activity_log;

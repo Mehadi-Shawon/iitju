@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams, NavLink } from 'react-router-dom'
-import { useMyStatus } from '@/hooks/useData'
+import { useMyStatus, fetchLocationById, isMissingTable } from '@/hooks/useData'
 import { PageHeader, StatusBadge, LoadingPage, Spinner } from '@/components/ui'
 import { STATUS_VALUES } from '@/lib/staffStatus'
 import { formatDistanceToNow } from 'date-fns'
@@ -20,29 +20,42 @@ const STATUS_LABELS = {
 }
 
 /**
- * Pull a check-in out of whatever the camera decoded.
+ * Read the check-in parameters out of a scanned code or the current URL.
  *
- * A location QR holds a full URL back into this app. It may have been generated
- * on a different origin (a preview deploy, or before a domain change), so the
- * host is deliberately not checked — only the two params matter, and `st` is
- * validated against the known statuses so an edited code cannot inject one the
- * database would reject.
+ * Two forms exist. Current codes carry `?id=` — the identifier of a row in
+ * `locations` — so that renaming a room, or retiring it, takes effect on sheets
+ * already printed. Codes printed before the registry existed carry `?loc=` and
+ * `?st=` directly; those are still honoured so old sheets keep working, but the
+ * values they hold cannot be managed centrally.
+ *
+ * A code may have been generated against a different origin (a preview deploy,
+ * or before a domain change), so the host is deliberately not checked.
  */
-function parseScan(text) {
+function readParams(source) {
   let params
-  try {
-    params = new URL(text).searchParams
-  } catch {
-    // Not a URL — accept a bare query string too, e.g. "loc=Lab%202&st=in-lab"
-    if (!text.includes('loc=')) return null
-    params = new URLSearchParams(text.replace(/^\?/, ''))
+  if (source instanceof URLSearchParams) {
+    params = source
+  } else {
+    try {
+      params = new URL(source).searchParams
+    } catch {
+      // Not a URL - accept a bare query string too
+      if (!source.includes('id=') && !source.includes('loc=')) return null
+      params = new URLSearchParams(source.replace(/^\?/, ''))
+    }
   }
+
+  const id = (params.get('id') ?? '').trim()
+  if (id) return { kind: 'id', id }
 
   const location = (params.get('loc') ?? '').trim().slice(0, 80)
   if (!location) return null
 
+  // Legacy form: the status rides in the URL, so validate it rather than trust
+  // it — an edited link must not reach the database with an unknown value.
   const requested = params.get('st') ?? ''
   return {
+    kind: 'legacy',
     location,
     status: STATUS_VALUES.includes(requested) ? requested : 'available',
   }
@@ -52,14 +65,10 @@ export default function QRCheckInPage() {
   const [params] = useSearchParams()
   const { status, loading, checkInViaQR } = useMyStatus()
 
-  // Seeded from the URL when the phone's own camera opened the link; also set
-  // by the in-app scanner below. Either way it ends at the same confirm card.
-  const [pending, setPending] = useState(() => {
-    const location = (params.get('loc') ?? '').trim().slice(0, 80)
-    if (!location) return null
-    const requested = params.get('st') ?? ''
-    return { location, status: STATUS_VALUES.includes(requested) ? requested : 'available' }
-  })
+  // Set either by the URL (the device camera opened the link) or by the in-app
+  // scanner. Either way it ends at the same confirm card.
+  const [pending, setPending] = useState(null)
+  const [resolving, setResolving] = useState(() => !!(params.get('id') || params.get('loc')))
 
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(null)
@@ -96,12 +105,12 @@ export default function QRCheckInPage() {
           handledRef.current = true
           await stopScanner()
 
-          const scan = parseScan(decoded)
-          if (!scan) {
-            handledRef.current = false
-            return toast.error('That is not a FacultyTrack location code')
+          const { pending: p, error } = await resolve(readParams(decoded))
+          if (error) {
+            handledRef.current = false   // let them point at a different code
+            return toast.error(error)
           }
-          setPending(scan)
+          setPending(p)
         },
         () => {}   // per-frame decode misses are normal; ignore
       )
@@ -110,6 +119,42 @@ export default function QRCheckInPage() {
       toast.error('Could not open the camera. Check permission, or use your phone camera on the printed code.')
     }
   }
+
+  // Turns either code form into { location, status }. An id is looked up so the
+  // room's CURRENT name and status are used, not whatever was true when the
+  // sheet was printed; a retired or deleted room is refused.
+  const resolve = useCallback(async parsed => {
+    if (!parsed) return { error: 'That is not a FacultyTrack location code' }
+
+    if (parsed.kind === 'legacy') {
+      return { pending: { location: parsed.location, status: parsed.status } }
+    }
+
+    const { location, error } = await fetchLocationById(parsed.id)
+    if (isMissingTable(error)) {
+      return { error: 'Room codes are not set up yet. Ask an administrator to apply the locations migration.' }
+    }
+    if (error) return { error: 'Could not look up that room. Check your connection.' }
+    if (!location) return { error: 'This code refers to a room that no longer exists.' }
+    if (!location.active) return { error: `${location.name} is no longer an active check-in point.` }
+
+    return { pending: { location: location.name, status: location.status } }
+  }, [])
+
+  // Resolve a code that arrived in the URL
+  useEffect(() => {
+    let cancelled = false
+    const parsed = readParams(params)
+    if (!parsed) { setResolving(false); return }
+
+    resolve(parsed).then(({ pending: p, error }) => {
+      if (cancelled) return
+      setResolving(false)
+      if (error) toast.error(error)
+      else setPending(p)
+    })
+    return () => { cancelled = true }
+  }, [params, resolve])
 
   async function handleCheckIn(location, statusValue) {
     setSaving(true)
@@ -121,7 +166,7 @@ export default function QRCheckInPage() {
     toast.success(location ? `Checked in at ${location}` : 'Checked in')
   }
 
-  if (loading) return <LoadingPage />
+  if (loading || resolving) return <LoadingPage />
 
   return (
     <div className="max-w-lg mx-auto">

@@ -624,6 +624,103 @@ function facultyLabel(p) {
   return p?.honorific ? `${p.honorific} ${p.full_name}` : (p?.full_name ?? 'Faculty')
 }
 
+// ── Location QR registry (admin) ─────────────────────────────
+
+// The kinds an admin can pick, and the status each proposes. Mirrors the CHECK
+// constraints in 20260818_locations.sql — keep the two in step.
+export const LOCATION_KINDS = [
+  { id: 'classroom', label: 'Classroom',    icon: 'school',        status: 'in-class' },
+  { id: 'lab',       label: 'Lab',          icon: 'science',       status: 'in-lab' },
+  { id: 'office',    label: 'Office',       icon: 'meeting_room',  status: 'available' },
+  { id: 'meeting',   label: 'Meeting Room', icon: 'groups',        status: 'meeting' },
+  { id: 'library',   label: 'Library',      icon: 'local_library', status: 'available' },
+  { id: 'other',     label: 'Other',        icon: 'location_on',   status: 'available' },
+]
+
+// A room cannot set an absent status — you cannot scan a wall to declare
+// yourself off campus. Matches the CHECK constraint on locations.status.
+export const LOCATION_STATUSES = [
+  'available', 'in-class', 'in-lab', 'meeting', 'busy', 'on-break', 'away',
+]
+
+// PostgREST answers a request for a table it does not know about with
+// PGRST205 / "Could not find the table ... in the schema cache", which is
+// accurate but tells the reader nothing about what to do. It means one of two
+// things: the migration has not been applied, or it has and PostgREST is still
+// serving a stale cache.
+export function isMissingTable(error) {
+  if (!error) return false
+  return error.code === 'PGRST205'
+    || error.code === '42P01'
+    || /could not find the table|schema cache|does not exist/i.test(error.message ?? '')
+}
+
+export function useLocations() {
+  const { profile } = useAuth()
+  const [locations, setLocations] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [setupNeeded, setSetupNeeded] = useState(false)
+
+  const fetchLocations = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('locations')
+      .select('*')
+      .order('name')
+    setSetupNeeded(isMissingTable(error))
+    if (!error && data) setLocations(data)
+    setLoading(false)
+    return { error }
+  }, [])
+
+  useEffect(() => {
+    fetchLocations()
+    const channel = supabase
+      .channel(`locations-${Date.now()}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'locations' }, fetchLocations)
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [fetchLocations])
+
+  async function createLocation({ name, kind, status }) {
+    const { data, error } = await supabase
+      .from('locations')
+      .insert({ name: name.trim(), kind, status, created_by: profile?.id })
+      .select()
+      .single()
+    if (!error) await fetchLocations()
+    return { data, error }
+  }
+
+  // Editing a room changes what every sheet already printed for it does —
+  // that is the point of storing them rather than baking the values into the QR
+  async function updateLocation(id, patch) {
+    const clean = { ...patch }
+    if (typeof clean.name === 'string') clean.name = clean.name.trim()
+    const { error } = await supabase.from('locations').update(clean).eq('id', id)
+    if (!error) await fetchLocations()
+    return { error }
+  }
+
+  async function deleteLocation(id) {
+    const { error } = await supabase.from('locations').delete().eq('id', id)
+    if (!error) await fetchLocations()
+    return { error }
+  }
+
+  return { locations, loading, setupNeeded, createLocation, updateLocation, deleteLocation, refetch: fetchLocations }
+}
+
+// Resolve a scanned location id. Used by the check-in page, which runs as a
+// faculty member — the SELECT policy is open to any signed-in user.
+export async function fetchLocationById(id) {
+  const { data, error } = await supabase
+    .from('locations')
+    .select('id, name, kind, status, active')
+    .eq('id', id)
+    .maybeSingle()
+  return { location: data ?? null, error }
+}
+
 // ── Notifications ────────────────────────────────────────────
 
 // AppLayout and each page call useNotifications() separately, so they hold

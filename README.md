@@ -122,6 +122,7 @@ src/
 | `activity_log` | Append-only log of all check-ins and status changes |
 | `schedule_requests` | Student meeting requests and the faculty response |
 | `thesis_submissions` | Thesis / project PDFs, one row per version, plus review outcome |
+| `locations` | Rooms that have a printed QR check-in code |
 | `notifications` | Per-user in-app notifications for both flows |
 
 ### Storage buckets
@@ -177,6 +178,7 @@ should read `OK`.
 | `20260814b_fix_policy_recursion.sql` | Moves policy lookups into `SECURITY DEFINER` helpers. Without it, reading `thesis_submissions` raises `42P17: infinite recursion`. | Yes |
 | `20260815_widen_staff_status_check.sql` | Widens the `staff_status.status` CHECK from 4 values to all 10, and sets `REPLICA IDENTITY FULL`. Without it, six statuses fail to save. | Yes |
 | `20260814_fix_profile_role_escalation.sql` | Stops any signed-in user rewriting their own `profiles.role` to `admin`. | Strongly recommended |
+| `20260818_locations.sql` | Creates the `locations` registry so room QR codes can be edited and retired after printing. Purely additive. | Yes - the Location QR page needs it |
 
 `supabase/backup_snapshot.sql` is a read-only snapshot query for taking a manual
 backup before applying any of the above.
@@ -218,9 +220,16 @@ rather than data, the phone's native camera opens it; there is no in-app scanner
 to find first. Scanning while signed out returns to that room's check-in after
 login.
 
-Locations are **not stored server-side** — the QR carries everything, so nothing
-needs migrating and a printed sheet keeps working forever. The admin's browser
-remembers recently generated rooms so a code can be reprinted without retyping.
+Rooms live in the **`locations`** table, and a code encodes the row's **id**
+rather than its name. That is what makes a printed sheet manageable after it is
+on the wall: renaming a room, or changing the status it sets, takes effect on
+every sheet already posted, and retiring or deleting a room stops those sheets
+working. Admins can create, edit, retire and delete rooms from the Location QR
+page.
+
+Codes printed before the registry existed encoded the name and status directly
+(`?loc=&st=`). Those are still accepted at check-in so old sheets keep working,
+but their values cannot be managed centrally.
 
 > **This is a convenience, not attendance proof.** A printed code can be
 > photographed and the URL can be edited by hand, so a check-in is a claim of
