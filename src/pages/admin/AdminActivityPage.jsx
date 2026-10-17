@@ -42,7 +42,7 @@ export default function AdminActivityPage() {
       />
 
       {loading && logs.length === 0 ? (
-        <LoadingPage />
+        <LoadingPage header={false} />
       ) : logs.length === 0 ? (
         <EmptyState icon="history" title="No activity yet" description="Activity will appear here as faculty check in and update their status." />
       ) : (

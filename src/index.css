@@ -68,6 +68,37 @@
   .status-dot-on-leave    { @apply bg-orange-400; }
 }
 
+/* ── Motion ─────────────────────────────────────────────────────
+   Used by the animate-* utilities in tailwind.config.js and by the classes
+   below. Kept short (150–250 ms) and small (a few pixels). */
+@keyframes fade-in    { from { opacity: 0 } to { opacity: 1 } }
+@keyframes fade-out   { from { opacity: 1 } to { opacity: 0 } }
+@keyframes rise       { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+@keyframes dialog-in  { from { opacity: 0; transform: translateY(8px) scale(0.98) } to { opacity: 1; transform: none } }
+@keyframes dialog-out { from { opacity: 1; transform: none } to { opacity: 0; transform: translateY(4px) scale(0.98) } }
+@keyframes sheet-in   { from { transform: translateY(100%) } to { transform: none } }
+@keyframes sheet-out  { from { transform: none } to { transform: translateY(100%) } }
+@keyframes pop-in     { from { opacity: 0; transform: translateY(-4px) scale(0.98) } to { opacity: 1; transform: none } }
+@keyframes shimmer    { from { background-position: 100% 50% } to { background-position: 0 50% } }
+
+/* Loading placeholders, with a soft moving sheen */
+.skeleton {
+  background: linear-gradient(90deg, #e8ecf7 25%, #f4f6fc 37%, #e8ecf7 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* Honour "reduce motion": everything lands in its final state at once. The
+   spinner is left turning, since it is the only sign something is loading. */
+@media (prefers-reduced-motion: reduce) {
+  *:not(.animate-spin), *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
+
 /* scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

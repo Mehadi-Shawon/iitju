@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
-import { Avatar } from '@/components/ui'
+import { Avatar, usePresence } from '@/components/ui'
 import { useNotifications } from '@/hooks/useData'
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
@@ -26,11 +26,15 @@ const NAV = {
     { to: '/app/staff/status', icon: 'update', label: 'Update Status' },
     { to: '/app/staff/schedule', icon: 'calendar_month', label: 'Schedule Requests', badgeKey: 'staffSchedule' },
     { to: '/app/staff/submissions', icon: 'assignment', label: 'Submissions', badgeKey: 'staffSubmissions' },
+    { to: '/app/staff/announcements', icon: 'campaign', label: 'Announcements' },
+    { to: '/app/staff/classrooms', icon: 'school', label: 'Classrooms', badgeKey: 'staffClassrooms' },
     { to: '/app/staff/checkin', icon: 'qr_code_scanner', label: 'Check In' },
     { to: '/app/staff/profile', icon: 'account_circle', label: 'My Profile' },
   ],
   student: [
     { to: '/app/dashboard', icon: 'dashboard', label: 'Faculty Directory' },
+    { to: '/app/student/announcements', icon: 'campaign', label: 'Announcements', badgeKey: 'studentAnnouncements' },
+    { to: '/app/student/classes', icon: 'school', label: 'My Classes' },
     { to: '/app/student/schedule', icon: 'calendar_add_on', label: 'Request Schedule', badgeKey: 'studentSchedule' },
     { to: '/app/student/submissions', icon: 'upload_file', label: 'My Submissions', badgeKey: 'studentSubmissions' },
   ],
@@ -51,6 +55,10 @@ export default function AppLayout({ children }) {
   const [confirmSignOut, setConfirmSignOut] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const { notifications, unreadCount, markAsRead, markAllRead } = useNotifications()
+  const location = useLocation()
+  // Both fade out rather than vanishing when closed
+  const overlay = usePresence(sidebarOpen, 200)
+  const signOutDialog = usePresence(confirmSignOut)
   const bellRef = useRef(null)
 
   useEffect(() => {
@@ -76,10 +84,18 @@ export default function AppLayout({ children }) {
     studentSchedule: notifications.filter(n => (n.type === 'schedule_accepted' || n.type === 'schedule_declined') && !n.read).length,
     staffSubmissions: notifications.filter(n => n.type === 'submission_new' && !n.read).length,
     studentSubmissions: notifications.filter(n => SUBMISSION_NOTIFS.includes(n.type) && n.type !== 'submission_new' && !n.read).length,
+    studentAnnouncements: notifications.filter(n => n.type === 'announcement' && !n.read).length,
+    staffClassrooms: notifications.filter(n => n.type === 'class_work' && !n.read).length,
   }
 
   // Send each notification to the page that owns it
-  function pageForNotif(type) {
+  function pageForNotif({ type, group_id }) {
+    if (type === 'class_work') {
+      return group_id ? `/app/staff/classrooms/${group_id}` : '/app/staff/classrooms'
+    }
+    if (type === 'announcement') {
+      return role === 'student' ? '/app/student/announcements' : '/app/staff/announcements'
+    }
     if (SUBMISSION_NOTIFS.includes(type)) {
       return role === 'student' ? '/app/student/submissions' : '/app/staff/submissions'
     }
@@ -152,14 +168,19 @@ export default function AppLayout({ children }) {
       </aside>
 
       {/* Overlay (mobile) */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/30 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      {overlay.mounted && (
+        <div
+          className={`fixed inset-0 bg-black/30 z-30 lg:hidden ${overlay.closing ? 'animate-fade-out pointer-events-none' : 'animate-fade-in'}`}
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
 
       {/* Sign-out confirmation */}
-      {confirmSignOut && (
-        <div className="fixed inset-0 bg-text/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-xs p-6 text-center">
+      {signOutDialog.mounted && (
+        <div className={`fixed inset-0 bg-text/40 backdrop-blur-sm z-50 flex items-center justify-center p-4
+          ${signOutDialog.closing ? 'animate-fade-out pointer-events-none' : 'animate-fade-in'}`}>
+          <div className={`bg-white rounded-xl shadow-lg w-full max-w-xs p-6 text-center
+            ${signOutDialog.closing ? 'animate-dialog-out' : 'animate-dialog-in'}`}>
             <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
               <span className="material-symbols-outlined text-red-500" style={{ fontSize: 24 }}>logout</span>
             </div>
@@ -183,8 +204,10 @@ export default function AppLayout({ children }) {
         </div>
       )}
 
-      {/* Main */}
-      <div className="flex-1 lg:ml-60 flex flex-col min-h-screen">
+      {/* Main — min-w-0 so long single-line text (truncated previews and the
+          like) is cut off inside the page, instead of widening the whole
+          column past the screen and making a phone zoom out to fit it */}
+      <div className="flex-1 min-w-0 lg:ml-60 flex flex-col min-h-screen">
         {/* Topbar */}
         <header className="no-print sticky top-0 z-20 h-14 bg-white/80 backdrop-blur-md border-b border-border-light flex items-center justify-between px-3 sm:px-6">
           <button className="lg:hidden p-2 rounded-lg hover:bg-surface-low text-text-muted" onClick={() => setSidebarOpen(true)}>
@@ -219,7 +242,7 @@ export default function AppLayout({ children }) {
               </button>
 
               {notifOpen && (
-                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-border-light overflow-hidden z-50">
+                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-border-light overflow-hidden z-50 origin-top-right animate-pop-in">
                   <div className="flex items-center justify-between px-4 py-3 border-b border-border-light">
                     <span className="font-bold text-sm text-text">Notifications</span>
                     {unreadCount > 0 && (
@@ -244,7 +267,7 @@ export default function AppLayout({ children }) {
                         onNavigate={() => {
                           markAsRead(n.id)
                           setNotifOpen(false)
-                          navigate(pageForNotif(n.type))
+                          navigate(pageForNotif(n))
                         }}
                       />
                     ))}
@@ -261,7 +284,10 @@ export default function AppLayout({ children }) {
 
         {/* Page */}
         <main className="flex-1 p-3 sm:p-6 max-w-6xl w-full mx-auto">
-          {children}
+          {/* Keyed by path, so each page eases in as you arrive on it */}
+          <div key={location.pathname} className="animate-page-in">
+            {children}
+          </div>
         </main>
       </div>
     </div>
@@ -278,6 +304,9 @@ const NOTIF_ICON = {
   submission_under_review: { icon: 'rate_review', cls: 'text-amber-600 bg-amber-50' },
   submission_approved:     { icon: 'verified',    cls: 'text-green-600 bg-green-50' },
   submission_rejected:     { icon: 'block',       cls: 'text-red-500 bg-red-50' },
+
+  announcement:            { icon: 'campaign',    cls: 'text-primary bg-primary-light' },
+  class_work:              { icon: 'upload_file', cls: 'text-blue-600 bg-blue-50' },
 }
 
 function NotifItem({ notif, onNavigate }) {

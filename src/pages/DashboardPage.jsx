@@ -31,7 +31,7 @@ export default function DashboardPage() {
     return matchF && matchS
   })
 
-  if (loading) return <LoadingPage />
+  if (loading) return <LoadingPage variant="dashboard" />
 
   return (
     <div>

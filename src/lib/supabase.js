@@ -293,11 +293,148 @@ export const anonClient = createClient(
   CREATE POLICY "locations_delete" ON public.locations FOR DELETE TO authenticated
     USING (public.has_role(auth.uid(), 'admin'));
 
+  -- 4g. Announcements (faculty → all students, or one of their own groups)
+  --
+  -- A group is a faculty member's own named set of students. Recipients are
+  -- notified by a trigger, and a guard trigger lets only the topic and message
+  -- change after posting. Created by
+  -- supabase/migrations/20261017_announcements.sql, which also holds the
+  -- triggers and the two SECURITY DEFINER lookups the policies call.
+  CREATE TABLE public.announcement_groups (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    owner_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    name        TEXT NOT NULL CHECK (btrim(name) <> '' AND char_length(name) <= 80),
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  CREATE UNIQUE INDEX announcement_groups_owner_name_unique
+    ON public.announcement_groups (owner_id, lower(name));
+
+  CREATE TABLE public.announcement_group_members (
+    group_id    UUID NOT NULL REFERENCES public.announcement_groups(id) ON DELETE CASCADE,
+    student_id  UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    PRIMARY KEY (group_id, student_id)
+  );
+
+  CREATE TABLE public.announcements (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    author_id   UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    audience    TEXT NOT NULL CHECK (audience IN ('all','group')),
+    group_id    UUID REFERENCES public.announcement_groups(id) ON DELETE CASCADE,
+    title       TEXT NOT NULL CHECK (btrim(title) <> '' AND char_length(title) <= 200),
+    body        TEXT NOT NULL CHECK (btrim(body)  <> '' AND char_length(body)  <= 5000),
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT announcements_audience_group CHECK ((audience = 'group') = (group_id IS NOT NULL))
+  );
+
+  ALTER TABLE public.notifications
+    ADD COLUMN IF NOT EXISTS announcement_id UUID
+    REFERENCES public.announcements(id) ON DELETE CASCADE;
+
+  ALTER TABLE public.announcement_groups        ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE public.announcement_group_members ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE public.announcements              ENABLE ROW LEVEL SECURITY;
+
+  -- Groups: the owner manages them; a member may read the group's name
+  CREATE POLICY "ann_groups_select" ON public.announcement_groups FOR SELECT TO authenticated
+    USING (owner_id = auth.uid() OR public.in_announcement_group(id, auth.uid()));
+  CREATE POLICY "ann_groups_insert" ON public.announcement_groups FOR INSERT TO authenticated
+    WITH CHECK (owner_id = auth.uid() AND public.has_role(auth.uid(), 'staff'));
+  CREATE POLICY "ann_groups_update" ON public.announcement_groups FOR UPDATE TO authenticated
+    USING      (owner_id = auth.uid() AND public.has_role(auth.uid(), 'staff'))
+    WITH CHECK (owner_id = auth.uid() AND public.has_role(auth.uid(), 'staff'));
+  CREATE POLICY "ann_groups_delete" ON public.announcement_groups FOR DELETE TO authenticated
+    USING (owner_id = auth.uid() AND public.has_role(auth.uid(), 'staff'));
+
+  -- Members: only the owner adds or removes them, and only student accounts
+  CREATE POLICY "ann_members_select" ON public.announcement_group_members FOR SELECT TO authenticated
+    USING (student_id = auth.uid() OR public.owns_announcement_group(group_id, auth.uid()));
+  CREATE POLICY "ann_members_insert" ON public.announcement_group_members FOR INSERT TO authenticated
+    WITH CHECK (public.owns_announcement_group(group_id, auth.uid())
+                AND public.has_role(auth.uid(), 'staff')
+                AND public.has_role(student_id, 'student'));
+  CREATE POLICY "ann_members_delete" ON public.announcement_group_members FOR DELETE TO authenticated
+    USING (public.owns_announcement_group(group_id, auth.uid()) AND public.has_role(auth.uid(), 'staff'));
+
+  -- Announcements: students read the posts for all students and for their
+  -- groups; faculty post (to their own groups only), edit and delete their own
+  CREATE POLICY "announcements_select" ON public.announcements FOR SELECT TO authenticated
+    USING (author_id = auth.uid()
+           OR (audience = 'all'   AND public.has_role(auth.uid(), 'student'))
+           OR (audience = 'group' AND public.in_announcement_group(group_id, auth.uid())));
+  CREATE POLICY "announcements_insert" ON public.announcements FOR INSERT TO authenticated
+    WITH CHECK (author_id = auth.uid()
+                AND public.has_role(auth.uid(), 'staff')
+                AND (audience = 'all' OR public.owns_announcement_group(group_id, auth.uid())));
+  CREATE POLICY "announcements_update" ON public.announcements FOR UPDATE TO authenticated
+    USING      (author_id = auth.uid() AND public.has_role(auth.uid(), 'staff'))
+    WITH CHECK (author_id = auth.uid() AND public.has_role(auth.uid(), 'staff'));
+  CREATE POLICY "announcements_delete" ON public.announcements FOR DELETE TO authenticated
+    USING (author_id = auth.uid() AND public.has_role(auth.uid(), 'staff'));
+
+  -- 4h. Classrooms (a group's chat, and the work its students submit)
+  --
+  -- A group from 4g is also a classroom. Every upload is its own class_files
+  -- row and none can be changed or deleted, so those rows are the submission
+  -- log. Created by supabase/migrations/20261017b_classrooms.sql, which also
+  -- holds the triggers (server timestamps, version numbering, the teacher's
+  -- notification) and the private `class-files` bucket with its policies.
+  CREATE TABLE public.class_messages (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    group_id    UUID NOT NULL REFERENCES public.announcement_groups(id) ON DELETE CASCADE,
+    sender_id   UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    body        TEXT NOT NULL CHECK (btrim(body) <> '' AND char_length(body) <= 2000),
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  CREATE TABLE public.class_files (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    group_id    UUID NOT NULL REFERENCES public.announcement_groups(id) ON DELETE CASCADE,
+    student_id  UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    parent_id   UUID REFERENCES public.class_files(id) ON DELETE CASCADE,
+    version     INT NOT NULL DEFAULT 1,
+    file_path   TEXT NOT NULL UNIQUE,   -- {group_id}/{student_id}/{random}.{ext} in class-files
+    file_name   TEXT NOT NULL CHECK (btrim(file_name) <> '' AND char_length(file_name) <= 255),
+    file_size   INT CHECK (file_size >= 0),
+    mime_type   TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  ALTER TABLE public.notifications
+    ADD COLUMN IF NOT EXISTS group_id UUID
+    REFERENCES public.announcement_groups(id) ON DELETE CASCADE;
+
+  ALTER TABLE public.class_messages ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE public.class_files    ENABLE ROW LEVEL SECURITY;
+
+  -- Chat: the classroom's teacher and students read and write, in their own name
+  CREATE POLICY "class_messages_select" ON public.class_messages FOR SELECT TO authenticated
+    USING (public.owns_announcement_group(group_id, auth.uid())
+           OR public.in_announcement_group(group_id, auth.uid()));
+  CREATE POLICY "class_messages_insert" ON public.class_messages FOR INSERT TO authenticated
+    WITH CHECK (sender_id = auth.uid()
+                AND ((public.owns_announcement_group(group_id, auth.uid()) AND public.has_role(auth.uid(), 'staff'))
+                     OR public.in_announcement_group(group_id, auth.uid())));
+
+  -- Work: a student sees their own files, the teacher everyone's; only a
+  -- student of the classroom submits, pointing at their own folder of it
+  CREATE POLICY "class_files_select" ON public.class_files FOR SELECT TO authenticated
+    USING (student_id = auth.uid() OR public.owns_announcement_group(group_id, auth.uid()));
+  CREATE POLICY "class_files_insert" ON public.class_files FOR INSERT TO authenticated
+    WITH CHECK (student_id = auth.uid()
+                AND public.has_role(auth.uid(), 'student')
+                AND public.in_announcement_group(group_id, auth.uid())
+                AND file_path LIKE group_id::text || '/' || auth.uid()::text || '/%');
+
   -- 5. Enable Realtime on staff_status
   ALTER PUBLICATION supabase_realtime ADD TABLE public.staff_status;
   ALTER PUBLICATION supabase_realtime ADD TABLE public.activity_log;
   ALTER PUBLICATION supabase_realtime ADD TABLE public.schedule_requests;
   ALTER PUBLICATION supabase_realtime ADD TABLE public.thesis_submissions;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.announcements;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.class_messages;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.class_files;
 
   -- 6. Function to auto-create profile + status on signup
   CREATE OR REPLACE FUNCTION public.handle_new_user()

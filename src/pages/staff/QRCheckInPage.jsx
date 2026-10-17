@@ -166,7 +166,7 @@ export default function QRCheckInPage() {
     toast.success(location ? `Checked in at ${location}` : 'Checked in')
   }
 
-  if (loading || resolving) return <LoadingPage />
+  if (loading || resolving) return <LoadingPage variant="form" />
 
   return (
     <div className="max-w-lg mx-auto">

@@ -78,7 +78,7 @@ export default function AdminUsersPage() {
       </div>
 
       {/* User list */}
-      {loading ? <LoadingPage /> : filtered.length === 0 ? (
+      {loading ? <LoadingPage header={false} /> : filtered.length === 0 ? (
         <EmptyState icon="group_off" title="No users found" description="Try a different filter or add new users." />
       ) : (
         <>

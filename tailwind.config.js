@@ -41,6 +41,22 @@ export default {
         lg: '0 12px 32px rgba(17,28,45,0.10), 0 4px 8px rgba(17,28,45,0.05)',
         primary: '0 4px 20px rgba(70,72,212,0.25)',
       },
+      // Motion: short, small, decelerating. The keyframes live in index.css so
+      // plain CSS (.skeleton) can share them. Entrances use
+      // `backwards`, not `both`: a kept final `transform: none` would override
+      // hover lifts like hover:-translate-y-0.5. Exits keep `both` so the
+      // element stays hidden until it unmounts.
+      animation: {
+        'fade-in':    'fade-in 200ms ease-out backwards',
+        'fade-out':   'fade-out 150ms ease-in both',
+        'rise':       'rise 240ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards',
+        'page-in':    'rise 220ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards',
+        'dialog-in':  'dialog-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards',
+        'dialog-out': 'dialog-out 150ms ease-in both',
+        'sheet-in':   'sheet-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards',
+        'sheet-out':  'sheet-out 180ms ease-in both',
+        'pop-in':     'pop-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards',
+      },
     },
   },
   plugins: [],

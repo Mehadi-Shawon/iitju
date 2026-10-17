@@ -6,20 +6,28 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "android:sync": "vite build && cap sync android",
+    "android:apk": "npm run android:sync && cd android && ./gradlew assembleDebug",
+    "android:run": "vite build && cap run android --target facultytrack_test",
+    "android:emulator": "\"${ANDROID_HOME:-$HOME/Library/Android/sdk}/emulator/emulator\" -avd facultytrack_test"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0",
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.118.0",
+    "date-fns": "^3.2.0",
+    "html5-qrcode": "^2.3.8",
+    "lucide-react": "^0.312.0",
+    "qrcode.react": "^3.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.21.0",
     "react-hot-toast": "^2.4.1",
-    "qrcode.react": "^3.1.0",
-    "html5-qrcode": "^2.3.8",
-    "date-fns": "^3.2.0",
-    "lucide-react": "^0.312.0"
+    "react-router-dom": "^6.21.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@vitejs/plugin-react": "^4.2.0",

@@ -27,6 +27,11 @@ thesis/project submission review.
 - Respond to student schedule requests
 - Review submitted thesis / project PDFs — approve, deny, or edit the details and approve in one action
 - Per-student submission activity log, with full revision history
+- Post announcements on any topic to all students, or to one of your
+  classrooms; edit or delete them afterwards
+- Classrooms: your own named groups of students (e.g. a thesis group), each
+  with a group chat, the files every student has submitted, and a log of each
+  submit and update
 
 ### 🎓 Student
 - Login with Student ID
@@ -36,6 +41,10 @@ thesis/project submission review.
 - Submit a thesis or project report as a PDF to a chosen faculty member
 - Track review status, read faculty feedback, and resubmit if denied
 - See own submission history, version by version
+- Read announcements from faculty — those for all students and for any
+  classroom you are in — with a notification for each new one
+- My Classes: chat with the class and teacher, submit work files and update
+  them with new versions, and see your own submission log
 
 ---
 
@@ -49,7 +58,7 @@ npm install
 ### 2. Set up Supabase
 1. Create a free project at [supabase.com](https://supabase.com)
 2. Go to **SQL Editor** and run the full schema SQL from `src/lib/supabase.js` (it's in the comments at the bottom of the file). It creates the tables, the RLS policies, and the private `submissions` storage bucket. Then apply the files in `supabase/migrations/` — see [Migrations](#migrations) below.
-3. Enable **Realtime** for `staff_status`, `activity_log`, `schedule_requests`, `thesis_submissions` and `notifications` in the Supabase dashboard (the schema SQL also does this via `ALTER PUBLICATION`)
+3. Enable **Realtime** for `staff_status`, `activity_log`, `schedule_requests`, `thesis_submissions`, `announcements`, `class_messages`, `class_files` and `notifications` in the Supabase dashboard (the schema SQL also does this via `ALTER PUBLICATION`)
 4. Create a public `avatars` bucket for profile photos (Storage → New bucket → public)
 
 ### 3. Configure environment
@@ -81,7 +90,7 @@ src/
 ├── components/
 │   ├── ui/           # StatusBadge, Avatar, Modal, StatCard, etc.
 │   ├── layout/       # AppLayout (sidebar + topbar)
-│   └── shared/       # RouteGuard (auth + role protection)
+│   └── shared/       # RouteGuard (auth + role protection), AnnouncementInbox (list + reading pane, both roles)
 ├── context/
 │   └── AuthContext.jsx   # Session, profile, role, signIn/Out
 ├── hooks/
@@ -92,15 +101,20 @@ src/
 ├── pages/
 │   ├── LoginPage.jsx
 │   ├── DashboardPage.jsx  (all roles)
+│   ├── ClassroomPage.jsx  (faculty + students: chat, work, log)
 │   ├── staff/
 │   │   ├── StaffProfilePage.jsx
 │   │   ├── StatusUpdatePage.jsx     # the ten-state status picker
 │   │   ├── QRCheckInPage.jsx
 │   │   ├── FacultySchedulePage.jsx
-│   │   └── ThesisReviewPage.jsx    # review student submissions
+│   │   ├── ThesisReviewPage.jsx    # review student submissions
+│   │   ├── FacultyAnnouncementsPage.jsx  # post announcements
+│   │   └── ClassroomsPage.jsx      # create and edit classrooms
 │   ├── student/
 │   │   ├── ScheduleRequestPage.jsx
-│   │   └── ThesisSubmitPage.jsx    # submit PDF + track status
+│   │   ├── ThesisSubmitPage.jsx    # submit PDF + track status
+│   │   ├── StudentAnnouncementsPage.jsx  # read announcements
+│   │   └── MyClassesPage.jsx       # the classrooms you are in
 │   └── admin/
 │       ├── AdminUsersPage.jsx
 │       ├── AdminActivityPage.jsx
@@ -109,6 +123,10 @@ src/
 ├── App.jsx
 ├── AppRouter.jsx
 └── main.jsx
+
+android/                  # the Android app (Capacitor's native project)
+assets/                   # source images for the app icon and splash screen
+capacitor.config.json     # app id, name, and where the web build lives
 ```
 
 ---
@@ -123,7 +141,12 @@ src/
 | `schedule_requests` | Student meeting requests and the faculty response |
 | `thesis_submissions` | Thesis / project PDFs, one row per version, plus review outcome |
 | `locations` | Rooms that have a printed QR check-in code |
-| `notifications` | Per-user in-app notifications for both flows |
+| `announcements` | Faculty notices — topic, message, and who it was sent to |
+| `announcement_groups` | Each faculty member's classrooms — their own named sets of students |
+| `announcement_group_members` | Which students are in each classroom |
+| `class_messages` | Classroom chat messages |
+| `class_files` | Work submitted in a classroom, one row per version — this is the submission log |
+| `notifications` | Per-user in-app notifications for every flow |
 
 ### Storage buckets
 
@@ -131,6 +154,7 @@ src/
 |--------|--------|---------|
 | `avatars` | yes | Profile photos, served via public URL |
 | `submissions` | **no** | Thesis / project PDFs — private, 15 MB cap, `application/pdf` only, served through short-lived signed URLs |
+| `class-files` | **no** | Classroom work — private, 15 MB cap, PDF, Word, PowerPoint, Excel, images or ZIP, served through short-lived signed URLs |
 
 ---
 
@@ -166,6 +190,64 @@ Row-Level Security enforces the rules in the database, not just the UI:
 
 ---
 
+## Announcements
+
+A faculty member posts an announcement (a topic and a message) to **all
+students**, or to **one of their classrooms** (see below).
+
+- every recipient gets an in-app notification, written by a database trigger
+  in the same transaction as the post
+- the author can edit the topic and message later (students see it marked
+  *edited* and are not notified again) or delete it, which also removes its
+  notifications
+- who a post was sent to cannot change after posting, and deleting a
+  classroom deletes the announcements sent to it
+- membership is live: a student added to a classroom sees its earlier
+  announcements, and a student removed from it stops seeing them
+
+Row-Level Security enforces this in the database: only faculty can post, only
+to their own classrooms, and a student can read only the posts for all
+students plus those for classrooms they belong to. Admins neither post nor
+read announcements.
+
+---
+
+## Classrooms
+
+A classroom is a named set of students that a faculty member puts together
+on the **Classrooms** page — a course section, a lab group, a thesis team —
+and it is private to them. (In the database these are the
+`announcement_groups`, since announcements came first.) Students see the
+classrooms they are in under **My Classes**. Inside one:
+
+- **Chat** — the teacher and every student in the classroom can write. Text
+  only; messages cannot be edited or deleted, and they send no notifications.
+- **Work** — a student submits a file and can later update it with a new
+  version. Only that student and the teacher can see it, never classmates.
+- **Log** — every submit and update with its time. The teacher sees every
+  student's; a student sees their own.
+
+The log is not a separate table anyone writes to: every upload is its own
+row in `class_files`, version 1 is the submission and later versions are
+updates. No student can change or delete one, in the table or in the
+bucket, so the log cannot be edited or drift from the files. The teacher gets
+a notification for each submit and update.
+
+Row-Level Security enforces this in the database, not just the UI:
+- only a student of the classroom can upload, into their own folder of it
+  (`{classroom}/{student}/…`), and the row must point at that folder — so no
+  one can pass off a classmate's file as theirs
+- the version number is worked out by a trigger, not trusted from the client,
+  and an update must extend the student's own submission
+- there is no `UPDATE` policy on the bucket, so an upload can never overwrite
+  submitted work
+- deleting a classroom deletes its chat, file records and announcements; the
+  app removes its stored files from the bucket first, since those are not rows
+- a student removed from a classroom loses its chat, but the work they
+  already submitted stays on record for the teacher
+
+---
+
 ## Migrations
 
 `supabase/migrations/` holds the SQL to apply to an existing database, in this
@@ -179,9 +261,17 @@ should read `OK`.
 | `20260815_widen_staff_status_check.sql` | Widens the `staff_status.status` CHECK from 4 values to all 10, and sets `REPLICA IDENTITY FULL`. Without it, six statuses fail to save. | Yes |
 | `20260814_fix_profile_role_escalation.sql` | Stops any signed-in user rewriting their own `profiles.role` to `admin`. | Strongly recommended |
 | `20260818_locations.sql` | Creates the `locations` registry so room QR codes can be edited and retired after printing. Purely additive. | Yes - the Location QR page needs it |
+| `20261017_announcements.sql` | Creates `announcements`, `announcement_groups` and `announcement_group_members` with their policies and notification triggers, and adds `notifications.announcement_id`. Purely additive. | Yes - the Announcements and Classrooms pages need it |
+| `20261017b_classrooms.sql` | Creates `class_messages`, `class_files` and the private `class-files` bucket with their policies and triggers, and adds `notifications.group_id`. Needs the announcements file first, and refuses to run without it. Purely additive. | Yes - the Classrooms pages need it |
 
 `supabase/backup_snapshot.sql` is a read-only snapshot query for taking a manual
 backup before applying any of the above.
+
+`supabase/anonymize_faculty.sql` replaces real faculty names, titles and photos
+with made-up ones ("Faculty Member 01", …). Faculty may not be shown by real
+name or photo without their consent. Logins are unchanged; the file explains
+what it touches. Take a backup first, and afterwards delete the photo files it
+lists from Storage.
 
 ### Known limitation
 
@@ -199,6 +289,7 @@ university SSO, is the intended next step — see Future Scope in the proposal.
 - **Tailwind CSS** — styling
 - **qrcode.react** — QR code generation
 - **html5-qrcode** — QR code scanning via camera
+- **Capacitor 8** — packages the web app as the Android app
 - **date-fns** — date formatting
 - **react-hot-toast** — notifications
 
@@ -255,3 +346,56 @@ npm run build
 Deploy the `dist/` folder to Vercel, Netlify, or any static host.
 
 Set environment variables on your hosting platform (same as `.env`).
+
+---
+
+## Android App
+
+The same app also runs as an Android app, built with
+[Capacitor](https://capacitorjs.com). The web build is bundled inside a native
+Android project in `android/`, and the app talks to the same Supabase project
+as the website. A change to the web app reaches the Android app the next time
+the APK is rebuilt.
+
+### Building the APK
+
+Needs Java 21 and the Android SDK with platform 36. Then:
+
+```bash
+npm run android:apk
+```
+
+The installable file is written to
+`android/app/build/outputs/apk/debug/app-debug.apk`. Copy it to a phone and
+open it; Android asks once to allow installs from that source. This is a debug
+build, fine for installing directly. Publishing on Google Play needs a signed
+release build instead.
+
+`npm run android:sync` only copies a fresh web build into `android/`, for
+working on the project in Android Studio.
+
+### Trying it on the emulator
+
+```bash
+npm run android:run        # build the latest code, open the emulator, install and start the app
+npm run android:emulator   # just open the emulator
+```
+
+Both expect an Android Virtual Device named `facultytrack_test` (Android 16).
+Create one in Android Studio's Device Manager, or with `avdmanager`. Turn on
+`hw.keyboard=yes` in its `config.ini` so the computer's keyboard types into
+it. Closing the emulator window shuts it down, and the next start resumes from
+where it was. Its camera shows a virtual room, so the Check In scanner has no
+real code to read there.
+
+### What is different inside the app
+
+- PDFs and submitted files open in the phone's browser rather than inside the
+  app.
+- Room QR codes made inside the app must point at the website, so set
+  `VITE_PUBLIC_SITE_URL` in `.env` before building. Without it, the Location QR
+  page asks admins to print codes from the website.
+- Scanning a printed room code with the phone's own camera app opens the
+  website. The app's **Check In** page has its own scanner.
+- The icon and splash screen are generated from the images in `assets/` with
+  `npx @capacitor/assets generate --android`.

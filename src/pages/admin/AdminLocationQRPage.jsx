@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
+import { Capacitor } from '@capacitor/core'
 import { useLocations, LOCATION_KINDS, LOCATION_STATUSES } from '@/hooks/useData'
 import { PageHeader, EmptyState, LoadingPage, Modal, Spinner } from '@/components/ui'
 import { format } from 'date-fns'
@@ -14,6 +15,12 @@ const STATUS_LABELS = {
   'on-break': 'On Break',
   away: 'Away',
 }
+
+// A printed code must open the website. In the Android app the page's own
+// origin is the app's local address, which no phone camera can open, so there
+// the site's address has to come from VITE_PUBLIC_SITE_URL.
+const SITE_URL = (import.meta.env.VITE_PUBLIC_SITE_URL ?? '').trim().replace(/\/+$/, '')
+const CHECKIN_BASE = SITE_URL || (Capacitor.isNativePlatform() ? '' : window.location.origin)
 
 const kindOf = k => LOCATION_KINDS.find(p => p.id === k) ?? LOCATION_KINDS[5]
 const EMPTY = { name: '', kind: 'classroom', status: 'in-class' }
@@ -30,8 +37,8 @@ export default function AdminLocationQRPage() {
   // The QR encodes the row id, not the name — so renaming a room or changing
   // the status it sets takes effect on every sheet already printed for it.
   const checkInUrl = useMemo(() => {
-    if (!active) return ''
-    return `${window.location.origin}/app/staff/checkin?id=${active.id}`
+    if (!active || !CHECKIN_BASE) return ''
+    return `${CHECKIN_BASE}/app/staff/checkin?id=${active.id}`
   }, [active])
 
   const shown = useMemo(() => {
@@ -101,7 +108,7 @@ export default function AdminLocationQRPage() {
     }
   }
 
-  if (loading) return <LoadingPage />
+  if (loading) return <LoadingPage variant="form" />
 
   // The table is missing, so nothing on this page can work. Say what to do
   // rather than let every action fail with a raw PostgREST message.
@@ -273,7 +280,15 @@ export default function AdminLocationQRPage() {
 
         {/* ── Printable sheet ── */}
         <section>
-          {!active ? (
+          {!CHECKIN_BASE ? (
+            <div className="card no-print">
+              <EmptyState
+                icon="language"
+                title="Print codes from the website"
+                description="The app does not know the website's address yet, so a code made here could not be scanned. Rooms can still be added and edited."
+              />
+            </div>
+          ) : !active ? (
             <div className="card no-print">
               <EmptyState
                 icon="qr_code_2"

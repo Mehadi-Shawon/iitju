@@ -103,7 +103,7 @@ export default function StaffProfilePage() {
     toast.success('Password updated')
   }
 
-  if (loading) return <LoadingPage />
+  if (loading) return <LoadingPage variant="form" />
 
   const displayName = profile?.honorific
     ? `${profile.honorific} ${profile.full_name}`

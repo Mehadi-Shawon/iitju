@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useStaffList, useScheduleRequests, useNotifications } from '@/hooks/useData'
-import { Avatar, StatusBadge, PageHeader, LoadingPage, EmptyState } from '@/components/ui'
+import { Avatar, StatusBadge, PageHeader, LoadingPage, EmptyState, usePresence } from '@/components/ui'
 import { format, formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 
@@ -34,6 +34,13 @@ export default function ScheduleRequestPage() {
   const [selected, setSelected] = useState(null)
   const [form, setForm] = useState({ subject: '', message: '', preferred_date: '', preferred_time: '', duration_mins: 30 })
   const [submitting, setSubmitting] = useState(false)
+
+  // The phone sheet slides away after `selected` is cleared, so it keeps
+  // showing the last faculty member until it has gone
+  const sheet = usePresence(!!selected, 200)
+  const lastSelected = useRef(selected)
+  if (selected) lastSelected.current = selected
+  const sheetFaculty = selected ?? lastSelected.current
 
   const filtered = staff.filter(s =>
     !search ||
@@ -91,130 +98,134 @@ export default function ScheduleRequestPage() {
         ))}
       </div>
 
-      {tab === 'new' ? (
-        <>
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-            {/* Faculty picker — full width on mobile, 2 cols on desktop */}
-            <div className="lg:col-span-2 space-y-3">
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-faint" style={{ fontSize: 17 }}>search</span>
-                <input
-                  type="text"
-                  className="form-input pl-9"
-                  placeholder="Search faculty..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2 max-h-[65vh] overflow-y-auto pr-1">
-                {filtered.length === 0 ? (
-                  <EmptyState icon="search_off" title="No faculty found" description="Try a different search term." />
-                ) : filtered.map(s => (
-                  <button
-                    key={s.id}
-                    onClick={() => setSelected(prev => prev?.id === s.id ? null : s)}
-                    className={`w-full text-left card px-3.5 py-3 flex items-center gap-3 transition-all duration-150
-                      ${selected?.id === s.id
-                        ? 'border-primary bg-primary-light shadow'
-                        : 'hover:border-primary/40 hover:shadow-sm'}`}
-                  >
-                    <div className="relative shrink-0">
-                      <Avatar name={s.full_name} src={s.avatar_url} size="sm" />
-                      <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white status-dot status-dot-${s.status}`} />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-sm font-bold text-text truncate">
-                        {s.honorific ? `${s.honorific} ${s.full_name}` : s.full_name}
+      {/* Keyed by tab, so switching tabs fades the new view in */}
+      <div key={tab} className="animate-fade-in">
+        {tab === 'new' ? (
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+              {/* Faculty picker — full width on mobile, 2 cols on desktop */}
+              <div className="lg:col-span-2 space-y-3">
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-faint" style={{ fontSize: 17 }}>search</span>
+                  <input
+                    type="text"
+                    className="form-input pl-9"
+                    placeholder="Search faculty..."
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2 max-h-[65vh] overflow-y-auto pr-1">
+                  {filtered.length === 0 ? (
+                    <EmptyState icon="search_off" title="No faculty found" description="Try a different search term." />
+                  ) : filtered.map(s => (
+                    <button
+                      key={s.id}
+                      onClick={() => setSelected(prev => prev?.id === s.id ? null : s)}
+                      className={`w-full text-left card px-3.5 py-3 flex items-center gap-3 transition-all duration-150
+                        ${selected?.id === s.id
+                          ? 'border-primary bg-primary-light shadow'
+                          : 'hover:border-primary/40 hover:shadow-sm'}`}
+                    >
+                      <div className="relative shrink-0">
+                        <Avatar name={s.full_name} src={s.avatar_url} size="sm" />
+                        <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white status-dot status-dot-${s.status}`} />
                       </div>
-                      <div className="text-xs text-text-faint truncate">{s.department ?? '—'}</div>
-                      <div className="mt-1"><StatusBadge status={s.status} /></div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-text truncate">
+                          {s.honorific ? `${s.honorific} ${s.full_name}` : s.full_name}
+                        </div>
+                        <div className="text-xs text-text-faint truncate">{s.department ?? '—'}</div>
+                        <div className="mt-1"><StatusBadge status={s.status} /></div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Desktop right panel — hidden on mobile */}
+              <div className="hidden lg:block lg:col-span-3">
+                {selected ? (
+                  <div key={selected.id} className="card p-5 sm:p-6 animate-fade-in">
+                    <SelectedFacultyHeader faculty={selected} />
+                    <RequestForm
+                      form={form} setForm={setForm}
+                      submitting={submitting}
+                      onSubmit={handleSubmit}
+                      onClear={() => setSelected(null)}
+                    />
+                  </div>
+                ) : (
+                  <div className="card p-8 flex flex-col items-center justify-center text-center gap-3 min-h-[300px]">
+                    <div className="w-14 h-14 rounded-full bg-primary-light flex items-center justify-center">
+                      <span className="material-symbols-outlined text-primary" style={{ fontSize: 28 }}>calendar_add_on</span>
                     </div>
-                  </button>
+                    <div>
+                      <div className="font-bold text-text mb-1">Select a Faculty Member</div>
+                      <div className="text-sm text-text-muted">Choose from the list on the left to send a schedule request</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Mobile bottom-sheet modal — shown only on mobile when a faculty is selected */}
+            {sheet.mounted && sheetFaculty && (
+              <div className={`fixed inset-0 z-50 flex items-end lg:hidden ${sheet.closing ? 'pointer-events-none' : ''}`}>
+                {/* Backdrop */}
+                <div
+                  className={`absolute inset-0 bg-black/40 backdrop-blur-sm ${sheet.closing ? 'animate-fade-out' : 'animate-fade-in'}`}
+                  onClick={() => setSelected(null)}
+                />
+                {/* Sheet */}
+                <div className={`relative w-full bg-white rounded-t-2xl shadow-2xl max-h-[92vh] flex flex-col
+                  ${sheet.closing ? 'animate-sheet-out' : 'animate-sheet-in'}`}>
+                  {/* Drag handle */}
+                  <div className="flex justify-center pt-3 pb-1 shrink-0">
+                    <div className="w-10 h-1 rounded-full bg-gray-200" />
+                  </div>
+                  {/* Sheet header */}
+                  <div className="flex items-center justify-between px-5 py-3 border-b border-border-light shrink-0">
+                    <SelectedFacultyHeader faculty={sheetFaculty} compact />
+                    <button
+                      onClick={() => setSelected(null)}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg bg-surface-low text-text-muted hover:bg-red-50 hover:text-red-500 transition-colors ml-3 shrink-0"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 18 }}>close</span>
+                    </button>
+                  </div>
+                  {/* Scrollable form body */}
+                  <div className="overflow-y-auto flex-1 px-5 py-4">
+                    <RequestForm
+                      form={form} setForm={setForm}
+                      submitting={submitting}
+                      onSubmit={handleSubmit}
+                      onClear={() => setSelected(null)}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          /* My Requests tab */
+          <div>
+            {requests.length === 0 ? (
+              <EmptyState
+                icon="event_busy"
+                title="No requests yet"
+                description="Go to New Request to send your first schedule request to a faculty member."
+              />
+            ) : (
+              <div className="space-y-3">
+                {requests.map(req => (
+                  <StudentRequestCard key={req.id} request={req} onCancel={handleCancel} />
                 ))}
               </div>
-            </div>
-
-            {/* Desktop right panel — hidden on mobile */}
-            <div className="hidden lg:block lg:col-span-3">
-              {selected ? (
-                <div className="card p-5 sm:p-6">
-                  <SelectedFacultyHeader faculty={selected} />
-                  <RequestForm
-                    form={form} setForm={setForm}
-                    submitting={submitting}
-                    onSubmit={handleSubmit}
-                    onClear={() => setSelected(null)}
-                  />
-                </div>
-              ) : (
-                <div className="card p-8 flex flex-col items-center justify-center text-center gap-3 min-h-[300px]">
-                  <div className="w-14 h-14 rounded-full bg-primary-light flex items-center justify-center">
-                    <span className="material-symbols-outlined text-primary" style={{ fontSize: 28 }}>calendar_add_on</span>
-                  </div>
-                  <div>
-                    <div className="font-bold text-text mb-1">Select a Faculty Member</div>
-                    <div className="text-sm text-text-muted">Choose from the list on the left to send a schedule request</div>
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
           </div>
-
-          {/* Mobile bottom-sheet modal — shown only on mobile when a faculty is selected */}
-          {selected && (
-            <div className="fixed inset-0 z-50 flex items-end lg:hidden">
-              {/* Backdrop */}
-              <div
-                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-                onClick={() => setSelected(null)}
-              />
-              {/* Sheet */}
-              <div className="relative w-full bg-white rounded-t-2xl shadow-2xl max-h-[92vh] flex flex-col">
-                {/* Drag handle */}
-                <div className="flex justify-center pt-3 pb-1 shrink-0">
-                  <div className="w-10 h-1 rounded-full bg-gray-200" />
-                </div>
-                {/* Sheet header */}
-                <div className="flex items-center justify-between px-5 py-3 border-b border-border-light shrink-0">
-                  <SelectedFacultyHeader faculty={selected} compact />
-                  <button
-                    onClick={() => setSelected(null)}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-surface-low text-text-muted hover:bg-red-50 hover:text-red-500 transition-colors ml-3 shrink-0"
-                  >
-                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>close</span>
-                  </button>
-                </div>
-                {/* Scrollable form body */}
-                <div className="overflow-y-auto flex-1 px-5 py-4">
-                  <RequestForm
-                    form={form} setForm={setForm}
-                    submitting={submitting}
-                    onSubmit={handleSubmit}
-                    onClear={() => setSelected(null)}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </>
-      ) : (
-        /* My Requests tab */
-        <div>
-          {requests.length === 0 ? (
-            <EmptyState
-              icon="event_busy"
-              title="No requests yet"
-              description="Go to New Request to send your first schedule request to a faculty member."
-            />
-          ) : (
-            <div className="space-y-3">
-              {requests.map(req => (
-                <StudentRequestCard key={req.id} request={req} onCancel={handleCancel} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

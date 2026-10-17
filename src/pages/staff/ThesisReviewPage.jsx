@@ -140,57 +140,60 @@ export default function ThesisReviewPage() {
         </div>
       </div>
 
-      {tab === 'student' ? (
-        byStudent.length === 0 ? (
+      {/* Keyed by tab, so switching tabs fades the new view in */}
+      <div key={tab} className="animate-fade-in">
+        {tab === 'student' ? (
+          byStudent.length === 0 ? (
+            searching ? (
+              <EmptyState
+                icon="search_off"
+                title="No match"
+                description={`No student matches "${search.trim()}". Try an ID, a name, or part of a title.`}
+              />
+            ) : (
+              <EmptyState icon="group" title="No students yet" description="Submissions will be grouped by student here." />
+            )
+          ) : (
+            <div className="space-y-4">
+              {byStudent.map(s => (
+                <StudentActivityCard
+                  key={s.id}
+                  student={s.student}
+                  chains={s.chains}
+                  onOpenFile={handleOpenFile}
+                  onReview={setReviewTarget}
+                />
+              ))}
+            </div>
+          )
+        ) : displayed.length === 0 ? (
           searching ? (
             <EmptyState
               icon="search_off"
               title="No match"
-              description={`No student matches "${search.trim()}". Try an ID, a name, or part of a title.`}
+              description={`Nothing ${tab === 'pending' ? 'awaiting review ' : ''}matches "${search.trim()}". Try an ID, a name, or part of a title.`}
             />
           ) : (
-            <EmptyState icon="group" title="No students yet" description="Submissions will be grouped by student here." />
+            <EmptyState
+              icon={tab === 'pending' ? 'inbox' : 'upload_file'}
+              title={tab === 'pending' ? 'Nothing to review' : 'No submissions yet'}
+              description={tab === 'pending' ? "You're all caught up!" : "Students haven't submitted anything to you yet."}
+            />
           )
         ) : (
-          <div className="space-y-4">
-            {byStudent.map(s => (
-              <StudentActivityCard
-                key={s.id}
-                student={s.student}
-                chains={s.chains}
+          <div className="space-y-3">
+            {displayed.map(versions => (
+              <ReviewCard
+                key={versions[0].parent_id ?? versions[0].id}
+                versions={versions}
                 onOpenFile={handleOpenFile}
+                onStartReview={handleStartReview}
                 onReview={setReviewTarget}
               />
             ))}
           </div>
-        )
-      ) : displayed.length === 0 ? (
-        searching ? (
-          <EmptyState
-            icon="search_off"
-            title="No match"
-            description={`Nothing ${tab === 'pending' ? 'awaiting review ' : ''}matches "${search.trim()}". Try an ID, a name, or part of a title.`}
-          />
-        ) : (
-          <EmptyState
-            icon={tab === 'pending' ? 'inbox' : 'upload_file'}
-            title={tab === 'pending' ? 'Nothing to review' : 'No submissions yet'}
-            description={tab === 'pending' ? "You're all caught up!" : "Students haven't submitted anything to you yet."}
-          />
-        )
-      ) : (
-        <div className="space-y-3">
-          {displayed.map(versions => (
-            <ReviewCard
-              key={versions[0].parent_id ?? versions[0].id}
-              versions={versions}
-              onOpenFile={handleOpenFile}
-              onStartReview={handleStartReview}
-              onReview={setReviewTarget}
-            />
-          ))}
-        </div>
-      )}
+        )}
+      </div>
 
       <ReviewModal
         key={reviewTarget?.id ?? 'none'}

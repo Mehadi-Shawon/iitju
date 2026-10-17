@@ -66,7 +66,7 @@ export default function StatusUpdatePage() {
     toast.success(`You are now ${pickedMeta.label}`)
   }
 
-  if (loading) return <LoadingPage />
+  if (loading) return <LoadingPage variant="form" />
 
   // Shared by the desktop and mobile save buttons so the two cannot drift
   const saveDisabled = saving || !dirty

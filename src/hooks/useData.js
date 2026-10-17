@@ -3,6 +3,16 @@ import { supabase, anonClient } from '@/lib/supabase'
 import { writeStaffStatus, ABSENT_STATUSES } from '@/lib/staffStatus'
 import { useAuth } from '@/context/AuthContext'
 
+// Every subscription needs a channel name of its own. supabase.channel() hands
+// back the existing channel when a name is reused, and adding listeners to one
+// that is already subscribed throws — which `${prefix}-${Date.now()}` allowed
+// whenever two subscriptions started in the same millisecond, as the sidebar's
+// notification bell and a page's own do when they mount together. The counter
+// makes names unique; Date.now() keeps them unique across a dev hot reload,
+// which restarts the counter.
+let channelCount = 0
+const channelName = prefix => `${prefix}-${++channelCount}-${Date.now()}`
+
 // ── Staff list with their status (realtime) ──────────────────
 export function useStaffList() {
   const [staff, setStaff] = useState([])
@@ -56,7 +66,7 @@ export function useStaffList() {
     // Realtime. As a reliable fallback, we also watch activity_log INSERT events — every
     // successful updateStatus/checkInViaQR call inserts one — to trigger a full refetch.
     const channel = supabase
-      .channel(`staff-watcher-${Date.now()}`)
+      .channel(channelName('staff-watcher'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_status' }, fetchStaff)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_log' }, fetchStaff)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, fetchStaff)
@@ -212,7 +222,7 @@ export function useAdminUsers() {
     fetchUsers()
 
     const channel = supabase
-      .channel(`admin-users-${Date.now()}`)
+      .channel(channelName('admin-users'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_status' }, fetchUsers)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_log' }, fetchUsers)
       .subscribe()
@@ -353,7 +363,7 @@ export function useScheduleRequests() {
   useEffect(() => {
     fetchRequests()
     const channel = supabase
-      .channel(`schedule-reqs-${Date.now()}`)
+      .channel(channelName('schedule-reqs'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_requests' }, fetchRequests)
       .subscribe()
     return () => supabase.removeChannel(channel)
@@ -478,7 +488,7 @@ export function useSubmissions() {
   useEffect(() => {
     fetchSubmissions()
     const channel = supabase
-      .channel(`submissions-${Date.now()}`)
+      .channel(channelName('submissions'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'thesis_submissions' }, fetchSubmissions)
       .subscribe()
     return () => supabase.removeChannel(channel)
@@ -675,7 +685,7 @@ export function useLocations() {
   useEffect(() => {
     fetchLocations()
     const channel = supabase
-      .channel(`locations-${Date.now()}`)
+      .channel(channelName('locations'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'locations' }, fetchLocations)
       .subscribe()
     return () => supabase.removeChannel(channel)
@@ -721,6 +731,453 @@ export async function fetchLocationById(id) {
   return { location: data ?? null, error }
 }
 
+// ── Announcements (faculty → all students, or one of their groups) ─
+
+export function useAnnouncements() {
+  const { profile } = useAuth()
+  const [announcements, setAnnouncements] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [setupNeeded, setSetupNeeded] = useState(false)
+
+  const fetchAnnouncements = useCallback(async () => {
+    if (!profile?.id) return
+
+    // RLS does the narrowing: faculty get their own posts, and a student gets
+    // the posts for all students plus those for the groups they are in
+    const { data, error } = await supabase
+      .from('announcements')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    setSetupNeeded(isMissingTable(error))
+    if (error || !data) { setLoading(false); return }
+
+    const authorIds = [...new Set(data.map(a => a.author_id))]
+    const groupIds = [...new Set(data.map(a => a.group_id).filter(Boolean))]
+    const [{ data: authors }, { data: groups }] = await Promise.all([
+      supabase.from('profiles').select('id, full_name, honorific, department, avatar_url').in('id', authorIds),
+      supabase.from('announcement_groups').select('id, name').in('id', groupIds),
+    ])
+
+    const pm = {}
+    for (const p of authors ?? []) pm[p.id] = p
+    const gm = {}
+    for (const g of groups ?? []) gm[g.id] = g
+
+    setAnnouncements(data.map(a => ({ ...a, author: pm[a.author_id] ?? null, group: gm[a.group_id] ?? null })))
+    setLoading(false)
+  }, [profile?.id])
+
+  useEffect(() => {
+    fetchAnnouncements()
+    const channel = supabase
+      .channel(channelName('announcements'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, fetchAnnouncements)
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [fetchAnnouncements])
+
+  // `group_id` null means every student. Recipients are notified by a trigger
+  // in the same transaction as this insert (20261017_announcements.sql), so a
+  // post is never saved with only some of its notifications written.
+  async function postAnnouncement({ title, body, group_id = null }) {
+    const { data, error } = await supabase.from('announcements').insert({
+      author_id: profile.id,
+      audience: group_id ? 'group' : 'all',
+      group_id,
+      title: title.trim(),
+      body: body.trim(),
+    }).select().single()
+    if (!error) await fetchAnnouncements()
+    return { data, error }
+  }
+
+  // Only the topic and message can change; the audience is fixed once posted.
+  // .select() because RLS turns a write to someone else's post into a
+  // zero-row success rather than an error.
+  async function updateAnnouncement(id, { title, body }) {
+    const { data, error } = await supabase
+      .from('announcements')
+      .update({ title: title.trim(), body: body.trim() })
+      .eq('id', id)
+      .select('id')
+    if (error) return { error }
+    if (!data?.length) return { error: { message: 'You can only edit your own announcements.' } }
+    await fetchAnnouncements()
+    return { error: null }
+  }
+
+  // Its notifications go with it (ON DELETE CASCADE)
+  async function deleteAnnouncement(id) {
+    const { data, error } = await supabase
+      .from('announcements')
+      .delete()
+      .eq('id', id)
+      .select('id')
+    if (error) return { error }
+    if (!data?.length) return { error: { message: 'You can only delete your own announcements.' } }
+    await fetchAnnouncements()
+    return { error: null }
+  }
+
+  return { announcements, loading, setupNeeded, postAnnouncement, updateAnnouncement, deleteAnnouncement, refetch: fetchAnnouncements }
+}
+
+// A faculty member's own groups, each with the ids of its students, plus every
+// student account to pick members from. A group is also a classroom.
+export function useAnnouncementGroups() {
+  const { profile } = useAuth()
+  const [groups, setGroups] = useState([])
+  const [students, setStudents] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [setupNeeded, setSetupNeeded] = useState(false)
+
+  const fetchGroups = useCallback(async () => {
+    if (!profile?.id) return
+
+    const [{ data: rows, error }, { data: studentRows }] = await Promise.all([
+      supabase.from('announcement_groups').select('*').eq('owner_id', profile.id).order('name'),
+      supabase.from('profiles').select('id, full_name, student_id, department, avatar_url').eq('role', 'student').order('full_name'),
+    ])
+    setSetupNeeded(isMissingTable(error))
+    if (error || !rows) { setLoading(false); return }
+
+    const { data: members } = await supabase
+      .from('announcement_group_members')
+      .select('group_id, student_id')
+      .in('group_id', rows.map(g => g.id))
+
+    const byGroup = {}
+    for (const m of members ?? []) {
+      if (!byGroup[m.group_id]) byGroup[m.group_id] = []
+      byGroup[m.group_id].push(m.student_id)
+    }
+
+    setGroups(rows.map(g => ({ ...g, memberIds: byGroup[g.id] ?? [] })))
+    setStudents(studentRows ?? [])
+    setLoading(false)
+  }, [profile?.id])
+
+  useEffect(() => { fetchGroups() }, [fetchGroups])
+
+  async function createGroup({ name, memberIds }) {
+    const { data: group, error } = await supabase
+      .from('announcement_groups')
+      .insert({ owner_id: profile.id, name: name.trim() })
+      .select()
+      .single()
+    if (error) return { error }
+
+    if (memberIds.length) {
+      const { error: memberError } = await supabase
+        .from('announcement_group_members')
+        .insert(memberIds.map(student_id => ({ group_id: group.id, student_id })))
+      if (memberError) {
+        // Don't leave a half-made group behind
+        await supabase.from('announcement_groups').delete().eq('id', group.id)
+        return { error: memberError }
+      }
+    }
+
+    await fetchGroups()
+    return { data: group, error: null }
+  }
+
+  // Membership is saved as a diff against what is stored, rather than
+  // clear-and-reinsert, so a failure part-way can never leave the group empty
+  async function updateGroup(id, { name, memberIds }) {
+    const current = groups.find(g => g.id === id)
+    if (!current) return { error: { message: 'That group no longer exists.' } }
+
+    if (name.trim() !== current.name) {
+      const { data, error } = await supabase
+        .from('announcement_groups')
+        .update({ name: name.trim() })
+        .eq('id', id)
+        .select('id')
+      if (error) return { error }
+      if (!data?.length) return { error: { message: 'You can only edit your own groups.' } }
+    }
+
+    const keep = new Set(memberIds)
+    const had = new Set(current.memberIds)
+    const added = memberIds.filter(sid => !had.has(sid))
+    const removed = current.memberIds.filter(sid => !keep.has(sid))
+
+    if (added.length) {
+      const { error } = await supabase
+        .from('announcement_group_members')
+        .insert(added.map(student_id => ({ group_id: id, student_id })))
+      if (error) { await fetchGroups(); return { error } }
+    }
+    if (removed.length) {
+      const { error } = await supabase
+        .from('announcement_group_members')
+        .delete()
+        .eq('group_id', id)
+        .in('student_id', removed)
+      if (error) { await fetchGroups(); return { error } }
+    }
+
+    await fetchGroups()
+    return { error: null }
+  }
+
+  // The row cascades to its memberships, announcements, chat and file records.
+  // The stored files are not rows, so they are removed from the bucket first;
+  // otherwise every file students submitted would be orphaned there. Stops
+  // before deleting anything if that fails, so it can simply be retried.
+  async function deleteGroup(id) {
+    const { data: files, error: listError } = await supabase
+      .from('class_files')
+      .select('file_path')
+      .eq('group_id', id)
+    // No class_files table yet means the classrooms migration is not applied
+    // and there are no files to remove
+    if (listError && !isMissingTable(listError)) return { error: listError }
+
+    const paths = (files ?? []).map(f => f.file_path)
+    for (let i = 0; i < paths.length; i += 100) {
+      const { error } = await supabase.storage.from(CLASS_FILES_BUCKET).remove(paths.slice(i, i + 100))
+      if (error) return { error }
+    }
+
+    const { data, error } = await supabase
+      .from('announcement_groups')
+      .delete()
+      .eq('id', id)
+      .select('id')
+    if (error) return { error }
+    if (!data?.length) return { error: { message: 'You can only delete your own classrooms.' } }
+    await fetchGroups()
+    return { error: null }
+  }
+
+  return { groups, students, loading, setupNeeded, createGroup, updateGroup, deleteGroup, refetch: fetchGroups }
+}
+
+// ── Classrooms (a group's chat and the work its students submit) ─
+
+export const CLASS_FILES_BUCKET = 'class-files'
+export const MAX_CLASS_FILE_BYTES = 15 * 1024 * 1024 // 15 MB — the bucket enforces this too
+
+// Accepted extensions and the type each is uploaded as. Mirrors the bucket's
+// allowed_mime_types in 20261017b_classrooms.sql — keep the two in step. The
+// type comes from the extension rather than file.type, which some browsers
+// leave empty or report differently (ZIP especially).
+export const CLASS_FILE_TYPES = {
+  pdf:  'application/pdf',
+  doc:  'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ppt:  'application/vnd.ms-powerpoint',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  xls:  'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  png:  'image/png',
+  jpg:  'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif:  'image/gif',
+  webp: 'image/webp',
+  zip:  'application/zip',
+}
+export const CLASS_FILE_ACCEPT = Object.keys(CLASS_FILE_TYPES).map(ext => `.${ext}`).join(',')
+
+const extensionOf = name => (name.includes('.') ? name.split('.').pop().toLowerCase() : '')
+export const classFileType = name => CLASS_FILE_TYPES[extensionOf(name)] ?? null
+
+// Returns what is wrong with a file, or null if it can be uploaded
+export function checkClassFile(file) {
+  if (!file) return 'Choose a file to upload.'
+  if (!classFileType(file.name)) return 'That file type is not accepted. Use PDF, Word, PowerPoint, Excel, an image or a ZIP.'
+  if (file.size === 0) return 'That file is empty.'
+  if (file.size > MAX_CLASS_FILE_BYTES) return `File is too large. Maximum size is ${MAX_CLASS_FILE_BYTES / 1024 / 1024} MB.`
+  return null
+}
+
+// How many files a classroom holds, counting every version — shown before
+// it is deleted
+export async function countClassFiles(groupId) {
+  const { data, error } = await supabase.from('class_files').select('id').eq('group_id', groupId)
+  if (error) return { count: 0, error: isMissingTable(error) ? null : error }
+  return { count: data.length, error: null }
+}
+
+// The classrooms a student is in, each with its teacher
+export function useMyClasses() {
+  const { profile } = useAuth()
+  const [classes, setClasses] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [setupNeeded, setSetupNeeded] = useState(false)
+
+  const fetchClasses = useCallback(async () => {
+    if (!profile?.id) return
+
+    // RLS returns only the groups this student is a member of
+    const { data, error } = await supabase.from('announcement_groups').select('*').order('name')
+    setSetupNeeded(isMissingTable(error))
+    if (error || !data) { setLoading(false); return }
+
+    const { data: teachers } = await supabase
+      .from('profiles')
+      .select('id, full_name, honorific, avatar_url, department')
+      .in('id', [...new Set(data.map(g => g.owner_id))])
+    const tm = {}
+    for (const t of teachers ?? []) tm[t.id] = t
+
+    setClasses(data.map(g => ({ ...g, teacher: tm[g.owner_id] ?? null })))
+    setLoading(false)
+  }, [profile?.id])
+
+  useEffect(() => { fetchClasses() }, [fetchClasses])
+
+  return { classes, loading, setupNeeded, refetch: fetchClasses }
+}
+
+// The chat keeps the latest messages only; older ones are not paged in
+export const CHAT_HISTORY_LIMIT = 200
+
+// One classroom: its chat and the work submitted to it. RLS decides what each
+// user gets — the teacher every student's files, a student only their own.
+export function useClassroom(groupId) {
+  const { profile } = useAuth()
+  const [group, setGroup] = useState(null)
+  const [members, setMembers] = useState([])   // teacher only; RLS hides the list from students
+  const [messages, setMessages] = useState([])
+  const [files, setFiles] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [missing, setMissing] = useState(false)
+  const [setupNeeded, setSetupNeeded] = useState(false)
+
+  // Profiles of everyone who has written or submitted, fetched once each
+  const people = useRef(new Map())
+  const loadPeople = useCallback(async ids => {
+    const unknown = ids.filter(id => !people.current.has(id))
+    if (!unknown.length) return
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, full_name, honorific, avatar_url, student_id, department')
+      .in('id', unknown)
+    for (const p of data ?? []) people.current.set(p.id, p)
+  }, [])
+
+  const fetchMessages = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('class_messages')
+      .select('*')
+      .eq('group_id', groupId)
+      .order('created_at', { ascending: false })
+      .limit(CHAT_HISTORY_LIMIT)
+    if (error) { if (isMissingTable(error)) setSetupNeeded(true); return }
+    await loadPeople([...new Set(data.map(m => m.sender_id))])
+    setMessages(data.reverse().map(m => ({ ...m, sender: people.current.get(m.sender_id) ?? null })))
+  }, [groupId, loadPeople])
+
+  const fetchFiles = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('class_files')
+      .select('*')
+      .eq('group_id', groupId)
+      .order('created_at', { ascending: false })
+    if (error) { if (isMissingTable(error)) setSetupNeeded(true); return }
+    await loadPeople([...new Set(data.map(f => f.student_id))])
+    setFiles(data.map(f => ({ ...f, student: people.current.get(f.student_id) ?? null })))
+  }, [groupId, loadPeople])
+
+  useEffect(() => {
+    if (!profile?.id || !groupId) return
+    let cancelled = false
+
+    async function load() {
+      // RLS returns the group only to its teacher and its current students
+      const { data: g } = await supabase.from('announcement_groups').select('*').eq('id', groupId).maybeSingle()
+      if (cancelled) return
+      if (!g) { setMissing(true); setLoading(false); return }
+
+      await loadPeople([g.owner_id])
+      if (g.owner_id === profile.id) {
+        const { data: rows } = await supabase
+          .from('announcement_group_members')
+          .select('student_id')
+          .eq('group_id', groupId)
+        const ids = (rows ?? []).map(r => r.student_id)
+        await loadPeople(ids)
+        if (!cancelled) {
+          setMembers(ids.map(id => people.current.get(id)).filter(Boolean)
+            .sort((a, b) => a.full_name.localeCompare(b.full_name)))
+        }
+      }
+      await Promise.all([fetchMessages(), fetchFiles()])
+      if (cancelled) return
+      setGroup({ ...g, teacher: people.current.get(g.owner_id) ?? null })
+      setLoading(false)
+    }
+    load()
+
+    const channel = supabase
+      .channel(channelName(`classroom-${groupId}`))
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'class_messages', filter: `group_id=eq.${groupId}` }, fetchMessages)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'class_files', filter: `group_id=eq.${groupId}` }, fetchFiles)
+      .subscribe()
+
+    return () => { cancelled = true; supabase.removeChannel(channel) }
+  }, [profile?.id, groupId, loadPeople, fetchMessages, fetchFiles])
+
+  async function sendMessage(body) {
+    const { error } = await supabase
+      .from('class_messages')
+      .insert({ group_id: groupId, sender_id: profile.id, body: body.trim() })
+    if (!error) await fetchMessages()
+    return { error }
+  }
+
+  // `previous` is any version of the file being updated; omit it to submit a
+  // new one. The version number is worked out by the database.
+  async function submitWork(file, previous = null) {
+    const problem = checkClassFile(file)
+    if (problem) return { error: { message: problem } }
+
+    const type = classFileType(file.name)
+    // First folder is the classroom, second the student: the storage policies check both
+    const file_path = `${groupId}/${profile.id}/${crypto.randomUUID()}.${extensionOf(file.name)}`
+
+    const { error: uploadError } = await supabase.storage
+      .from(CLASS_FILES_BUCKET)
+      .upload(file_path, file, { contentType: type, upsert: false })
+    if (uploadError) return { error: uploadError }
+
+    const { data, error } = await supabase.from('class_files').insert({
+      group_id: groupId,
+      student_id: profile.id,
+      parent_id: previous ? (previous.parent_id ?? previous.id) : null,
+      file_path,
+      file_name: file.name,
+      file_size: file.size,
+      mime_type: type,
+    }).select().single()
+
+    // Students cannot delete from the bucket (that would let them remove
+    // submitted work), so a failed insert leaves the upload behind. Nothing
+    // shows it: files are listed from rows, and it has none.
+    if (error) return { error }
+
+    await fetchFiles()
+    return { data, error: null }
+  }
+
+  // Bucket is private — hand out a short-lived signed URL. PDFs and images
+  // open in the browser; anything else downloads under its original name.
+  async function getFileUrl(f) {
+    const inline = f.mime_type === 'application/pdf' || f.mime_type?.startsWith('image/')
+    const { data, error } = await supabase.storage
+      .from(CLASS_FILES_BUCKET)
+      .createSignedUrl(f.file_path, 300, inline ? undefined : { download: f.file_name })
+    if (error) return { error }
+    return { url: data.signedUrl, inline, error: null }
+  }
+
+  return { group, members, messages, files, loading, missing, setupNeeded, sendMessage, submitWork, getFileUrl }
+}
+
 // ── Notifications ────────────────────────────────────────────
 
 // AppLayout and each page call useNotifications() separately, so they hold
@@ -753,7 +1210,7 @@ export function useNotifications() {
     fetchNotifications()
     if (!profile?.id) return
     const channel = supabase
-      .channel(`notifs-${profile.id}-${Date.now()}`)
+      .channel(channelName(`notifs-${profile.id}`))
       .on('postgres_changes', {
         // '*' not 'INSERT' so read-state changes made in another tab arrive too
         event: '*',
@@ -819,9 +1276,10 @@ export function useNotifications() {
   // Clears a page's own notifications when that page is opened. Without this the
   // badge only ever cleared by clicking the item in the bell dropdown, so
   // reaching the page from the sidebar left the dot showing after viewing.
-  const markReadByType = useCallback(types => {
+  // `match` narrows it further, e.g. to one classroom's notifications.
+  const markReadByType = useCallback((types, match = () => true) => {
     const wanted = new Set(types)
-    const ids = notifications.filter(n => !n.read && wanted.has(n.type)).map(n => n.id)
+    const ids = notifications.filter(n => !n.read && wanted.has(n.type) && match(n)).map(n => n.id)
     if (ids.length) setRead(ids)
   }, [notifications]) // eslint-disable-line react-hooks/exhaustive-deps
 

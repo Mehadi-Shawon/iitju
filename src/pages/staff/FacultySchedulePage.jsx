@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useScheduleRequests, useNotifications } from '@/hooks/useData'
-import { Avatar, PageHeader, LoadingPage, EmptyState } from '@/components/ui'
+import { Avatar, PageHeader, LoadingPage, EmptyState, usePresence } from '@/components/ui'
 import { format, formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 
@@ -23,6 +23,7 @@ export default function FacultySchedulePage() {
   const [declineTarget, setDeclineTarget] = useState(null) // request id
   const [declineNote, setDeclineNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const declineDialog = usePresence(!!declineTarget)
 
   const pending = requests.filter(r => r.status === 'pending')
   const displayed = tab === 'pending' ? pending : requests
@@ -73,29 +74,34 @@ export default function FacultySchedulePage() {
         ))}
       </div>
 
-      {displayed.length === 0 ? (
-        <EmptyState
-          icon={tab === 'pending' ? 'inbox' : 'event_busy'}
-          title={tab === 'pending' ? 'No pending requests' : 'No requests yet'}
-          description={tab === 'pending' ? "You're all caught up!" : "Students haven't sent any requests yet."}
-        />
-      ) : (
-        <div className="space-y-3">
-          {displayed.map(req => (
-            <FacultyRequestCard
-              key={req.id}
-              request={req}
-              onAccept={() => handleAccept(req.id)}
-              onDecline={() => { setDeclineTarget(req.id); setDeclineNote('') }}
-            />
-          ))}
-        </div>
-      )}
+      {/* Keyed by tab, so switching tabs fades the new list in */}
+      <div key={tab} className="animate-fade-in">
+        {displayed.length === 0 ? (
+          <EmptyState
+            icon={tab === 'pending' ? 'inbox' : 'event_busy'}
+            title={tab === 'pending' ? 'No pending requests' : 'No requests yet'}
+            description={tab === 'pending' ? "You're all caught up!" : "Students haven't sent any requests yet."}
+          />
+        ) : (
+          <div className="space-y-3">
+            {displayed.map(req => (
+              <FacultyRequestCard
+                key={req.id}
+                request={req}
+                onAccept={() => handleAccept(req.id)}
+                onDecline={() => { setDeclineTarget(req.id); setDeclineNote('') }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Decline confirmation modal */}
-      {declineTarget && (
-        <div className="fixed inset-0 bg-text/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6">
+      {declineDialog.mounted && (
+        <div className={`fixed inset-0 bg-text/40 backdrop-blur-sm z-50 flex items-center justify-center p-4
+          ${declineDialog.closing ? 'animate-fade-out pointer-events-none' : 'animate-fade-in'}`}>
+          <div className={`bg-white rounded-xl shadow-lg w-full max-w-sm p-6
+            ${declineDialog.closing ? 'animate-dialog-out' : 'animate-dialog-in'}`}>
             <div className="w-11 h-11 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
               <span className="material-symbols-outlined text-red-500" style={{ fontSize: 22 }}>event_busy</span>
             </div>

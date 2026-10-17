@@ -14,6 +14,11 @@ import ScheduleRequestPage from '@/pages/student/ScheduleRequestPage'
 import FacultySchedulePage from '@/pages/staff/FacultySchedulePage'
 import ThesisSubmitPage from '@/pages/student/ThesisSubmitPage'
 import ThesisReviewPage from '@/pages/staff/ThesisReviewPage'
+import FacultyAnnouncementsPage from '@/pages/staff/FacultyAnnouncementsPage'
+import StudentAnnouncementsPage from '@/pages/student/StudentAnnouncementsPage'
+import ClassroomsPage from '@/pages/staff/ClassroomsPage'
+import MyClassesPage from '@/pages/student/MyClassesPage'
+import ClassroomPage from '@/pages/ClassroomPage'
 
 export default function AppRouter() {
   return (
@@ -96,6 +101,46 @@ export default function AppRouter() {
       <Route path="/app/staff/submissions" element={
         <RequireAuth roles={['staff', 'admin']}>
           <AppLayout><ThesisReviewPage /></AppLayout>
+        </RequireAuth>
+      } />
+
+      {/* Faculty only: posting is restricted to staff by RLS, so an admin
+          here would see every write refused */}
+      <Route path="/app/staff/announcements" element={
+        <RequireAuth roles={['staff']}>
+          <AppLayout><FacultyAnnouncementsPage /></AppLayout>
+        </RequireAuth>
+      } />
+
+      <Route path="/app/student/announcements" element={
+        <RequireAuth roles={['student']}>
+          <AppLayout><StudentAnnouncementsPage /></AppLayout>
+        </RequireAuth>
+      } />
+
+      {/* One classroom page for both roles, under each role's own path so the
+          sidebar item stays highlighted inside a classroom */}
+      <Route path="/app/staff/classrooms" element={
+        <RequireAuth roles={['staff']}>
+          <AppLayout><ClassroomsPage /></AppLayout>
+        </RequireAuth>
+      } />
+
+      <Route path="/app/staff/classrooms/:id" element={
+        <RequireAuth roles={['staff']}>
+          <AppLayout><ClassroomPage /></AppLayout>
+        </RequireAuth>
+      } />
+
+      <Route path="/app/student/classes" element={
+        <RequireAuth roles={['student']}>
+          <AppLayout><MyClassesPage /></AppLayout>
+        </RequireAuth>
+      } />
+
+      <Route path="/app/student/classes/:id" element={
+        <RequireAuth roles={['student']}>
+          <AppLayout><ClassroomPage /></AppLayout>
         </RequireAuth>
       } />
 
